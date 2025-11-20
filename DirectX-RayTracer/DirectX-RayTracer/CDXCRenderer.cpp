@@ -1,13 +1,24 @@
 #include "CDXCRenderer.h"
 #include <iostream>
-#include <d3d12.h>
-#include <dxgi1_6.h>
 #include <assert.h>
+#include <DXGItype.h>
+#include <fstream>
+
+void CDXCRenderer::render()
+{
+	prepareForRendering();
+	//renderFrame();
+	//cleanUp();
+}
 
 void CDXCRenderer::prepareForRendering()
 {
 	createDevice();
 	createCommandsManagers();
+	createGPUTexture();
+	createRenderTargetView();
+	createReadbackBuffer();
+	createFence();
 }
 
 void CDXCRenderer::createDevice()
@@ -94,4 +105,119 @@ void CDXCRenderer::generateConstColorTexture()
 
 	FLOAT clearColor[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
 	commandList->ClearRenderTargetView(*rtvHandle, clearColor, 0, nullptr);
+}
+
+void CDXCRenderer::createReadbackBuffer()
+{
+	UINT64 readbackBufferSize = 0;
+
+	d3d12Device->GetCopyableFootprints(
+		textureDesc, 0, 1, 0, renderTargetFootprint,
+		nullptr, nullptr, &readbackBufferSize
+	);
+
+	D3D12_HEAP_PROPERTIES readbackHeapProps = { D3D12_HEAP_TYPE_READBACK };
+	D3D12_RESOURCE_DESC readbackDesc = {};
+	readbackDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	readbackDesc.Width = readbackBufferSize;
+	readbackDesc.Height = 1;
+	readbackDesc.DepthOrArraySize = 1;
+	readbackDesc.MipLevels = 1;
+	readbackDesc.SampleDesc.Count = 1;
+	readbackDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+	HRESULT hr = d3d12Device->CreateCommittedResource(
+		&readbackHeapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&readbackDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&readbackBuffer)
+	);
+
+	assert(SUCCEEDED(hr));
+
+	//////
+
+	D3D12_RESOURCE_BARRIER barrier = {};
+	barrier.Transition.pResource = renderTarget;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+
+	commandList->ResourceBarrier(1, &barrier);
+
+	D3D12_TEXTURE_COPY_LOCATION dest = {};
+	dest.pResource = readbackBuffer;
+	dest.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	dest.PlacedFootprint = *renderTargetFootprint;
+
+	D3D12_TEXTURE_COPY_LOCATION src = {};
+	src.pResource = renderTarget;
+	src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	src.SubresourceIndex = 0;
+
+	commandList->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
+
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+	commandList->ResourceBarrier(1, &barrier);
+
+	HRESULT hr = commandList->Close();
+	assert(SUCCEEDED(hr));
+
+	ID3D12CommandList* ppCommandLists[] = { commandList };
+	commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+	commandQueue->Signal(renderFramefence, renderFramefenceValue);
+}
+
+void CDXCRenderer::createFence()
+{
+	HRESULT hr = d3d12Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&renderFramefence));
+	assert(SUCCEEDED(hr));
+
+	renderFrameEventHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+	assert(renderFrameEventHandle);
+}
+
+void CDXCRenderer::waitForGPURenderFrame()
+{
+	if (renderFramefence->GetCompletedValue() < renderFramefenceValue)
+	{
+		HRESULT hr = renderFramefence->SetEventOnCompletion(renderFramefenceValue, renderFrameEventHandle);
+		assert(SUCCEEDED(hr));
+
+		WaitForSingleObject(renderFrameEventHandle, INFINITE);
+	}
+}
+
+void CDXCRenderer::writeImageToFile()
+{
+	void* renderTargetData;
+	HRESULT hr = readbackBuffer->Map(0, nullptr, &renderTargetData);
+	assert(SUCCEEDED(hr));
+
+	std::string filename("output.ppm");
+	std::ofstream file(filename, std::ios::out | std::ios::binary);
+	assert(file);
+
+	file << "P3\n" << textureDesc->Width << textureDesc->Height << "\n255\n";
+
+	for (UINT rowIdx = 0; rowIdx < textureDesc->Height; rowIdx++)
+	{
+		UINT rowPitch = renderTargetFootprint->Footprint.RowPitch;
+		uint8_t* rowData = reinterpret_cast<uint8_t*>(renderTargetData) + rowIdx * rowPitch;
+		for (UINT64 colIdx = 0; colIdx < textureDesc->Width; colIdx++)
+		{
+			uint8_t* pixelData = rowData + colIdx * RGBA_COLOR_CHANNELS_COUNT;
+			for (int channelIdx = 0; channelIdx < RGBA_COLOR_CHANNELS_COUNT - 1; channelIdx++)
+			{
+				file << static_cast<int>(pixelData[channelIdx]) << ' ';
+			}
+		}
+		file << '\n';
+	}
+
+	file.close();
+	readbackBuffer->Unmap(0, nullptr);
 }
