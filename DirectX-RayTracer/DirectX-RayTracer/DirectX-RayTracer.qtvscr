@@ -1,0 +1,429 @@
+<FlowDocument xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" FontFamily="Segoe UI" FontSize="12">
+  <FlowDocument.Tag><![CDATA[{
+  "timestamp": "2025-11-24 22:42:07",
+  "files": {
+    "D:\\C++\\Chaos\\DirectX-RayTracer\\DirectX-RayTracer\\DirectX-RayTracer\\DirectX-RayTracer.vcxproj": {
+      "before": "7Vltb9s2EO7nAfsB/SYIGWx/sGXHbtYssopVzgyjzgvivPTDgIKW6FirJAoklcZb9xP2n3cSXyQ5dhsjSzIEzocAIo/H48O75+7of16/emW/u41C4wZTFpC4b3ZabdPAsUf8IL7umymfNd+a75wff7BPKfkDe9wY4BlKQ36O6DXmrG++T4PQNw3QEsPXnPPkF8ti3hxHiLWiwKOEkRlveSSyfHyDQ5JgakVsmi2zdtvtrgnaDcMecRwNKUkTY4ymOOybckOXxLPgOqWIg4FMCIP4qlljFHth6uO+OcDT9PrrVRB3d9UKWFNR5eQytlUdzEzJ/uzTEPEZoZGTK7Et/S0kYEDgsWr5d4w7wyFGDH/HPCn1HAYK9G73eg/FDlQ8CnLfMu3euG1onG1pDxUOCw4ArswXFacdhmSKwsJNL13pJ5ciwpzOz622bd0Zll71AS++EOoLp8tW2pYakhJS3TANfOevNprhN53urLnX81Gz13v7prnvzfabvc50v42mnt/d8//WrpqvkWrOCOHHKMIsQR52BgGF0P54hhbnFL6pbVXn5SIIBZ98YSL0VUDog7Wzg31TJFOTW1PgJmM/Sgjlhjxb39ypX7qSYE4Rnzd+P9I84iZJS1JQK4EbYKZhrboPiEs/yCijb9Z26pUobXzdqSvrG7V+v1Zii5qp6KeyRAVClULOFwl2fk2SMPBydlqK1XxaQnfBcL7LOJhSRAPMHE5TbFt3x+UCZeA5ISHD3Lnp9LpFLKlRKezOEdwbx3QCkhdxAPQNuiuja7EH0IvrMDaBrcJjTwfcDOLrP0Puak5CDBBcUxSdJDyIgj/zq5TXs3b6WYHX/Px0oL8cbwXafzrYXoqvjjYj6Coxi8WVNHl4y3GcVZxAWBwqTZkwIcfmG+Wy5dRQWTwBtsO+oOT7rVAcN5ljqFnNjViukhxymyCJ3cUDiJxmSRNS6XK6KmWbVgpiKm+VuBbfBoyzOmSqjfXUGjpljYmHQshHA8SRyh86Pd4L2ocAtZQOtlDprmVNwZEz0Ram9TApj3p5QKk4q/BaFvpHKGuYddBmLQdUu0Gcl7JCukQbm1W2ytXc0CVREoRYDgCfXSEaAw2Pswbdyf9DsVkZFAUPiE4GY3eOvc+yQtKfWuCUYuB/DzNGaGE7c65Gx93dg0+Dw/cXw4NP7snx5GR8ePBTfY18I+sUVmvSW2U1OvToKPbwEZS80qTlUVmrWcvntsdB/LnAYJJOJwsGgDuggEFZaFvFkN5yiGMMbxGimh+J7bM2Q+69dloZofcU/WQBUDnnPfDWVdzkTxe1ond50L3/lsZedtDcO7JTgL/IQ6+c0oiNYk4DSPaeElO9z4oJvUi7lSg89acWWOcbwsuOt14mPPsRvazUhTwzs2w5RfLYI9624pRKLl5m1M0yieKD/zmjbLnkft5VJDBwA+0ZxZt86aGs5SWJqnFWC7uDj+4Zjn1MoV8qSQsPL7YqfjYoOEj+ClDsXFE2VxvfVbVZk8vFLyBaXal1VW+Ius2Vj5mre1b9QOv8Cw==",
+      "after": "7Vltb9s2EO7nAfsN04QMjoHFcuo0axtZxWqnWTA7b06TfigQyBJtq5VEjaLSeOv++46vFm0rqZcmLdrkQxKRx+Px+PDuORL/9OiR++Iqia1LRPIIp217s9G0LZQGOIzScdsu6Gjjqf3C+/EH94jgdyigVheN/CKmpz4ZI5q37ZdFFIe2BVpS+JpQmj13nDyYoMTPG0kUEJzjEW0EOHFCdIlinCHiJPmQDXMeN5stG7RblrtPUbJHcJFZPX+I4rYtJ+zgdBSNC+JTMDAXwiC+rNfaT4O4CFHb7qJhMf54HqWtx2oEjDFUeVzGdcxGZgr7cY9in44wSTyuxHX0t5CABuGPZcNvMO4ExcjP0Q3mSakvYaDw3tX21m19ByruxHPXmfbJflvRONfRCBWABQAAlOnUAO1ejId+PIPpWUfi5EycMG/zt0bTdRaaJar+RNMPmIQCdGyk66gmKSHV7RVR6P3T9EfoyWZrtLG9FfobW1tPn2w8C0bPNrY2h8+a/jAIW9vhvxqqfIxUc4IxPfATlGd+gLxuROBovznxp6cEvonrmP1yEByFEH/IxdFXB0IvrMkWdq3I3CKP6dng4rLVBIzMLfKY9nMeVyw4XmHETn7brq2t6/Z6rd2u1azDE+vn3asop/m60fv2L9qgIkDV6ra3tt4fcHXSeWK5mEzrb7VG19H/iu1lB3y2vzJGJRkm1JJq2vba+llHBsIjn07qb/s63nWyrCFDZSMDTbltOctwYy7QiCb1j2vryst8waWoVrNVmDSGqANrhrrTaYa837MsjgIeRediCu+We/M6R3yWXjQkPolQ7lFSINdZbJcDlIGnGMc5ot7l5lZrduZVqxTuTHzAF0VkAJKv0wjSDOg2WpkkR+y8743tmMOF4YMFtxnx9v4cN4I48Nk8dz7BMQIXjImfHGY0SqK/+VbK7ans/qKO13nk/pz+7aAV0tP9ue1bwer+agHaDMyLg3VKqENGuQgF881VPC+F7ookNDcEctHyJCAZ7zGFuEiBeEOyKCmH1HZ9gDPzwtI0c8sZ5kPoXcxRjhZ3oV+tQRwsOYPI3hajQm1bb/cBpq9wkUJZ8xJBEYBkjm/bnSKnOOFcYqcTd3CSRTEyNutmPlLNWo6pgBbjLDJw91Ge+2NkCWz6aQBm/hGNJ7Z1iq5oyeTnVoCLOLRSTK0YQ55H1owE/cr+52DfseAPr+MSf8qFeSEGgwmjgPG0oSHqiFWXmY9BdXevKEpZ1ahB6wFH5geQy1UOHAALQKH9idKQ9DgVGEwQ1JuGr1c7GMqli8ccyA1hhBd44TyFKzGwRgFiS84+0gR0ZT0sIMiT2YM9i4GjdX3qK06ltgIY0aLRGqyMxCqzJKo/aRtu41h1lnhxXNNoXbRyZZcYG/w9urYUBh8QS42I8zkQy6P/d+1Y5UXDteyc9n12WaeCDr+Qgwo2Snn9LaT/NytRHtdJUzZAaDv3SQqcp8cuBz3+GwpIo1HkQhAddHudCQrey6pHf2qBI4IyggNImpjMbM+98/2D1uOdi+7uy9d7Oxedw4PBYW9355f1Cvk6q0CXa9JTMUoG94MsJfehjJUmzbdq8T7cmUbgemGbYA7lCq66X6iAMlnxDeXLXpS+n7lxUAwH0xwuUT2wIYdq0XVmTdqMPZQiuEoVRf6+WAG7XpHmV3YrI/Sc4jps5uNyygcj5jpWorMVyWV+/atB51WRBmyhHGBsFQA5ueilXdpj+yklEfCcQImpK5ElHXqQRqaoR/WnFqiClwDqwQNQK5EoPFrZfZ9AXZKqbwdSjZNVYfMQ2dxKRHxFgFGRzSAht4OMikpfeVx7iGj3BtBZJoYMqcE1exstPQQ0gixTfG+5cKf7pnOC0hARqH1L0guvYebjGFcmX2NnMxvK4ApDV6vq6ZezmSW17rWvLFQ89Gh1i0VoqVSe3YkYhWbF/V3pEUkZK7Qb3FlfhMhrosWbDf0E5/0H"
+    }
+  }
+}]]></FlowDocument.Tag>
+  <Section Margin="0,24" TextAlignment="Center">
+    <Paragraph FontSize="24" FontWeight="Bold" Margin="12,0">
+      <LineBreak />
+      <Span Foreground="Gray">Qt Visual Studio Tools</Span>
+    </Paragraph>
+    <Paragraph FontSize="42" Margin="12,0" FontWeight="Bold">
+      <Span TextDecorations="Underline">Project Format Conversion</Span>
+    </Paragraph>
+    <Paragraph Margin="12,8" FontSize="18">
+      <Span>Report generated on 2025-11-24 22:42:07</Span>
+    </Paragraph>
+  </Section>
+  <Section>
+    <Paragraph FontSize="32" FontWeight="Bold" Margin="12,0">
+      <Span>Files</Span>
+    </Paragraph>
+    <Paragraph Margin="24,12,0,0">
+      <Span FontFamily="Consolas" FontSize="14" Background="WhiteSmoke"><![CDATA[D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj]]></Span>
+      <LineBreak />
+      <Hyperlink NavigateUri="file://D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj?before">[Before]</Hyperlink>
+      <Hyperlink NavigateUri="file://D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj?after">[After]</Hyperlink>
+      <Hyperlink NavigateUri="file://D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj?diff&amp;before&amp;after">
+                        [Diff before/after]
+                    </Hyperlink>
+      <Hyperlink NavigateUri="file://D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj?diff&amp;before&amp;current">
+                        [Diff before/current]
+                    </Hyperlink>
+      <Hyperlink NavigateUri="file://D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj?diff&amp;after&amp;current">
+                        [Diff after/current]
+                    </Hyperlink>
+      <LineBreak />
+    </Paragraph>
+  </Section>
+  <Section>
+    <Paragraph FontSize="32" FontWeight="Bold" Margin="12,0">
+      <Span>Changes</Span>
+    </Paragraph>
+    <Paragraph FontSize="20" FontWeight="Bold" Margin="12">
+      <Span><![CDATA[🡺 Enabling multi-processor compilation]]></Span>
+    </Paragraph>
+    <Table CellSpacing="0" BorderBrush="Gray" BorderThickness="0.5">
+      <Table.Columns>
+        <TableColumn />
+        <TableColumn />
+      </Table.Columns>
+      <TableRowGroup>
+        <TableRow Background="Orange">
+          <TableCell ColumnSpan="2" BorderThickness="0.5" BorderBrush="Gray">
+            <Paragraph Margin="10,5" FontWeight="Bold">
+              <Span><![CDATA[D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[      <MultiProcessorCompilation>true</MultiProcessorCompilation>]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[      <MultiProcessorCompilation>true</MultiProcessorCompilation>]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[      <MultiProcessorCompilation>true</MultiProcessorCompilation>]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[      <MultiProcessorCompilation>true</MultiProcessorCompilation>]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+      </TableRowGroup>
+    </Table>
+    <Paragraph FontSize="20" FontWeight="Bold" Margin="12">
+      <Span><![CDATA[🡺 Project format version]]></Span>
+    </Paragraph>
+    <Table CellSpacing="0" BorderBrush="Gray" BorderThickness="0.5">
+      <Table.Columns>
+        <TableColumn />
+        <TableColumn />
+      </Table.Columns>
+      <TableRowGroup>
+        <TableRow Background="Orange">
+          <TableCell ColumnSpan="2" BorderThickness="0.5" BorderBrush="Gray">
+            <Paragraph Margin="10,5" FontWeight="Bold">
+              <Span><![CDATA[D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[    <Keyword>QtVS_v304</Keyword>]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+      </TableRowGroup>
+    </Table>
+    <Paragraph FontSize="20" FontWeight="Bold" Margin="12">
+      <Span><![CDATA[🡺 Fallback for QTMSBUILD environment variable]]></Span>
+    </Paragraph>
+    <Table CellSpacing="0" BorderBrush="Gray" BorderThickness="0.5">
+      <Table.Columns>
+        <TableColumn />
+        <TableColumn />
+      </Table.Columns>
+      <TableRowGroup>
+        <TableRow Background="Orange">
+          <TableCell ColumnSpan="2" BorderThickness="0.5" BorderBrush="Gray">
+            <Paragraph Margin="10,5" FontWeight="Bold">
+              <Span><![CDATA[D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[    <QtMsBuild Condition="'$(QtMsBuild)'=='' OR !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+      </TableRowGroup>
+    </Table>
+    <Paragraph FontSize="20" FontWeight="Bold" Margin="12">
+      <Span><![CDATA[🡺 Default Qt properties]]></Span>
+    </Paragraph>
+    <Table CellSpacing="0" BorderBrush="Gray" BorderThickness="0.5">
+      <Table.Columns>
+        <TableColumn />
+        <TableColumn />
+      </Table.Columns>
+      <TableRowGroup>
+        <TableRow Background="Orange">
+          <TableCell ColumnSpan="2" BorderThickness="0.5" BorderBrush="Gray">
+            <Paragraph Margin="10,5" FontWeight="Bold">
+              <Span><![CDATA[D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[  <Import Project="$(QtMsBuild)\qt_defaults.props" Condition="Exists('$(QtMsBuild)\qt_defaults.props')" />]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+      </TableRowGroup>
+    </Table>
+    <Paragraph FontSize="20" FontWeight="Bold" Margin="12">
+      <Span><![CDATA[🡺 Qt build settings]]></Span>
+    </Paragraph>
+    <Table CellSpacing="0" BorderBrush="Gray" BorderThickness="0.5">
+      <Table.Columns>
+        <TableColumn />
+        <TableColumn />
+      </Table.Columns>
+      <TableRowGroup>
+        <TableRow Background="Orange">
+          <TableCell ColumnSpan="2" BorderThickness="0.5" BorderBrush="Gray">
+            <Paragraph Margin="10,5" FontWeight="Bold">
+              <Span><![CDATA[D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[  <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[  <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[  <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[  <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+      </TableRowGroup>
+    </Table>
+    <Paragraph FontSize="20" FontWeight="Bold" Margin="12">
+      <Span><![CDATA[🡺 Warn if Qt/MSBuild is not found]]></Span>
+    </Paragraph>
+    <Table CellSpacing="0" BorderBrush="Gray" BorderThickness="0.5">
+      <Table.Columns>
+        <TableColumn />
+        <TableColumn />
+      </Table.Columns>
+      <TableRowGroup>
+        <TableRow Background="Orange">
+          <TableCell ColumnSpan="2" BorderThickness="0.5" BorderBrush="Gray">
+            <Paragraph Margin="10,5" FontWeight="Bold">
+              <Span><![CDATA[D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[  <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') OR !Exists('$(QtMsBuild)\Qt.props')">]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[    <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[  </Target>]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+      </TableRowGroup>
+    </Table>
+    <Paragraph FontSize="20" FontWeight="Bold" Margin="12">
+      <Span><![CDATA[🡺 Qt property sheet]]></Span>
+    </Paragraph>
+    <Table CellSpacing="0" BorderBrush="Gray" BorderThickness="0.5">
+      <Table.Columns>
+        <TableColumn />
+        <TableColumn />
+      </Table.Columns>
+      <TableRowGroup>
+        <TableRow Background="Orange">
+          <TableCell ColumnSpan="2" BorderThickness="0.5" BorderBrush="Gray">
+            <Paragraph Margin="10,5" FontWeight="Bold">
+              <Span><![CDATA[D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[    <Import Project="$(QtMsBuild)\Qt.props" />]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[    <Import Project="$(QtMsBuild)\Qt.props" />]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[    <Import Project="$(QtMsBuild)\Qt.props" />]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[    <Import Project="$(QtMsBuild)\Qt.props" />]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+      </TableRowGroup>
+    </Table>
+    <Paragraph FontSize="20" FontWeight="Bold" Margin="12">
+      <Span><![CDATA[🡺 Qt targets]]></Span>
+    </Paragraph>
+    <Table CellSpacing="0" BorderBrush="Gray" BorderThickness="0.5">
+      <Table.Columns>
+        <TableColumn />
+        <TableColumn />
+      </Table.Columns>
+      <TableRowGroup>
+        <TableRow Background="Orange">
+          <TableCell ColumnSpan="2" BorderThickness="0.5" BorderBrush="Gray">
+            <Paragraph Margin="10,5" FontWeight="Bold">
+              <Span><![CDATA[D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer.vcxproj]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell ColumnSpan="2" Background="WhiteSmoke" BorderBrush="Gray" BorderThickness="0.5" />
+        </TableRow>
+        <TableRow>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0" />
+          </TableCell>
+          <TableCell BorderThickness="0, 0, 0.5, 0" BorderBrush="Gray">
+            <Paragraph FontFamily="Consolas" Margin="4, 0">
+              <Span Background="LightGreen"><![CDATA[  <Import Project="$(QtMsBuild)\qt.targets" Condition="Exists('$(QtMsBuild)\qt.targets')" />]]></Span>
+            </Paragraph>
+          </TableCell>
+        </TableRow>
+      </TableRowGroup>
+    </Table>
+  </Section>
+  <Section>
+    <Paragraph />
+  </Section>
+</FlowDocument>
+<!--h6LCIHhN6ILjz0tuzxAdqzua6ARMDuB6MaUEzvlhzxw=-->

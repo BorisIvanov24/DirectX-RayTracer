@@ -1,5 +1,7 @@
 #include <iostream>
 #include <dxgi1_6.h>
+#include "DXRTApp.h"
+#include <QApplication>
 
 #pragma comment (lib, "d3d12.lib")
 #pragma comment (lib, "dxgi.lib")
@@ -41,10 +43,30 @@ void printAdapters()
 	}
 }
 
-
-int main()
+void setTheme()
 {
-	CDXCRenderer renderer;
+	QApplication::setStyle("Fusion");
 
-	renderer.render();
+	QPalette dark;
+	dark.setColor(QPalette::Window, QColor(37, 37, 38));
+	dark.setColor(QPalette::WindowText, Qt::white);
+	dark.setColor(QPalette::Base, QColor(30, 30, 30));
+	dark.setColor(QPalette::AlternateBase, QColor(45, 45, 48));
+	dark.setColor(QPalette::Text, Qt::white);
+	dark.setColor(QPalette::Button, QColor(45, 45, 48));
+	dark.setColor(QPalette::ButtonText, Qt::white);
+
+	QApplication::setPalette(dark);
+}
+
+int main(int argc, char** argv)
+{
+	QApplication app(argc, argv); // Qt event loop
+	setTheme();
+
+	DXRTApp rendererApp;
+	if (!rendererApp.init())
+		return -1;
+
+	return app.exec(); // Starts the Qt event loop
 }
