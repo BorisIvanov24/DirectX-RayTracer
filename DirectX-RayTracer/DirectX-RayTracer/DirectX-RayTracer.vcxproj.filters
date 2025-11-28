@@ -18,7 +18,7 @@
     <ClCompile Include="Application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CDXCRenderer.cpp">
+    <ClCompile Include="DXRTRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DXRTApp.cpp">
@@ -32,7 +32,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CDXCRenderer.h">
+    <ClInclude Include="DXRTRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

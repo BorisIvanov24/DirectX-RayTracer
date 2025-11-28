@@ -11,6 +11,9 @@ public:
 
 	void updateImage(const QImage& image);
 
+	// Returns the native window handle that represents the underlying window for this widget
+	HWND getNativeWindowHandle();
+
 protected:
 	void paintEvent(QPaintEvent* event) override;
 

@@ -15,21 +15,30 @@ CDXC_MAKE_SMART_COM_POINTER(ID3D12GraphicsCommandList);
 CDXC_MAKE_SMART_COM_POINTER(ID3D12Resource);
 CDXC_MAKE_SMART_COM_POINTER(ID3D12DescriptorHeap);
 CDXC_MAKE_SMART_COM_POINTER(ID3D12Fence);
+CDXC_MAKE_SMART_COM_POINTER(IDXGISwapChain1);
+CDXC_MAKE_SMART_COM_POINTER(IDXGISwapChain3);
 
 #define RGBA_COLOR_CHANNELS_COUNT 4
 
-class CDXCRenderer
+class DXRTRenderer
 {
 public:
+
+	DXRTRenderer();
+
 	// Initiate the actual rendering
 	void render();
 
 	void renderFrame();
 
+	void renderFrameWithSwapChain();
+
 	// Create the necessary DirectX infrastructure and rendering resources
-	void prepareForRendering();
+	void prepareForRendering(HWND hwnd);
 
 	QImage getQImageForFrame();
+
+	void stopRendering();
 
 private:
 	// Create ID3D12Device, an interface which allows access to the GPU for the purpose of Direct3D API
@@ -54,6 +63,12 @@ private:
 
 	// Create fence, which will be used to synchronize the CPU and GPU after frame rendering
 	void createFence();
+
+	void createSwapChain(HWND hwnd);
+
+	void createRenderTargetViewsFromSwapChain();
+
+	void createDescriptorHeapForSwapChain();
 
 	// Stall the CPU untill the GPU finishes with the frame rendering
 	void waitForGPURenderFrame();
@@ -87,6 +102,17 @@ private:
 	ID3D12FencePtr renderFramefence; // Synchronize the CPU and GPU after frame rendering
 	HANDLE renderFrameEventHandle = nullptr; // The event which is fired when the GPU is ready with the rendering
 	UINT64 renderFramefenceValue = 1;
+
+	IDXGISwapChain3Ptr swapChain;
+	UINT64 swapChainFrameIdx = 0;
+	UINT64 rtvDescriptorSize = 0;
+
+	static const UINT FrameCount = 2;
+
+	ID3D12ResourcePtr renderTargets[FrameCount];
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[FrameCount];
+	ID3D12DescriptorHeapPtr swapChainRTVHeap;
+
 
 	float rendColor[4] = { 0.f, 1.f, 0.f, 1.f };
 	int frameIdx = 1;

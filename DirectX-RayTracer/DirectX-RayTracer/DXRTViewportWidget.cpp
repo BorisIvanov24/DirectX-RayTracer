@@ -16,6 +16,11 @@ void DXRTViewportWidget::updateImage(const QImage& image)
 	update();
 }
 
+HWND DXRTViewportWidget::getNativeWindowHandle()
+{
+	return reinterpret_cast<HWND>(winId());
+}
+
 void DXRTViewportWidget::paintEvent(QPaintEvent* event)
 {
 	QPainter painter(this);

@@ -1,5 +1,5 @@
 #pragma once
-#include "CDXCRenderer.h"
+#include "DXRTRenderer.h"
 #include <QObject>
 #include "DXRTMainWindow.h"
 #include <QTimer>
@@ -30,10 +30,10 @@ private:
 	void updateRenderStats();
 
 private:
-	CDXCRenderer renderer; // The actual GPU DX 12 renderer
-	DXRTMainWindow* mainWnd; // The main window for the editor
-	QTimer* idleTimer; // The timer for implementing the rendering loop 
-	QTimer* fpsTimer; // The timer to track the FPS value
+	DXRTRenderer renderer; // The actual GPU DX 12 renderer
+	DXRTMainWindow* mainWnd = nullptr; // The main window for the editor
+	QTimer* idleTimer = nullptr; // The timer for implementing the rendering loop 
+	QTimer* fpsTimer = nullptr; // The timer to track the FPS value
 	int frameIdxAtLastFPSCalc = 0;
 };
 

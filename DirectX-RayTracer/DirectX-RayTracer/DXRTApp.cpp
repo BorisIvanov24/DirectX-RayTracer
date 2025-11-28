@@ -8,7 +8,7 @@ bool DXRTApp::init()
 	}
 
 	//!
-	renderer.prepareForRendering();
+	renderer.prepareForRendering(mainWnd->getNativeWindowHandle());
 
 	mainWnd->show();
 
@@ -27,6 +27,7 @@ void DXRTApp::onQuit()
 {
 	idleTimer->stop();
 	fpsTimer->stop();
+	renderer.stopRendering();
 }
 
 bool DXRTApp::initWindow()
@@ -39,8 +40,8 @@ bool DXRTApp::initWindow()
 
 void DXRTApp::renderFrame()
 {
-	renderer.renderFrame();
-	mainWnd->updateViewport(renderer.getQImageForFrame());
+	renderer.renderFrameWithSwapChain();
+	//mainWnd->updateViewport(renderer.getQImageForFrame());
 	frameIdxAtLastFPSCalc++;
 }
 

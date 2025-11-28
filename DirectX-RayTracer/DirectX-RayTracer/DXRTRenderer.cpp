@@ -1,29 +1,46 @@
-#include "CDXCRenderer.h"
+#include "DXRTRenderer.h"
 #include <iostream>
 #include <assert.h>
 #include <DXGItype.h>
 #include <fstream>
 
-void CDXCRenderer::render()
+DXRTRenderer::DXRTRenderer()
 {
-	prepareForRendering();
+#ifdef _DEBUG
+	// Enable the D3D12 debug layer.
+	ID3D12Debug* debugController;
+	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+	{
+		debugController->EnableDebugLayer();
+		debugController->Release();
+	}
+#endif // _DEBUG
+}
+
+void DXRTRenderer::render()
+{
+	//prepareForRendering();
 
 	renderFrame();
 	
 	//cleanUp();
 }
 
-void CDXCRenderer::prepareForRendering()
+void DXRTRenderer::prepareForRendering(HWND hwnd)
 {
 	createDevice();
 	createCommandsManagers();
 	createFence();
-	createGPUTexture();
+	createSwapChain(hwnd);
+	createDescriptorHeapForSwapChain();
+	createRenderTargetViewsFromSwapChain();
+
+	/*createGPUTexture();
 	createRenderTargetView();
-	createReadbackBuffer();
+	createReadbackBuffer();*/
 }
 
-QImage CDXCRenderer::getQImageForFrame()
+QImage DXRTRenderer::getQImageForFrame()
 {
 	void* renderTargetData = nullptr;
 	HRESULT hr = readbackBuffer->Map(0, nullptr, &renderTargetData);
@@ -51,7 +68,7 @@ QImage CDXCRenderer::getQImageForFrame()
 	return image;
 }
 
-void CDXCRenderer::createDevice()
+void DXRTRenderer::createDevice()
 {
 	HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory));
 	assert(SUCCEEDED(hr));
@@ -98,7 +115,7 @@ void CDXCRenderer::createDevice()
 }
 
 
-//void CDXCRenderer::createDevice()
+//void DXRTRenderer::createDevice()
 //{
 //	HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory));
 //	assert(SUCCEEDED(hr));
@@ -117,7 +134,7 @@ void CDXCRenderer::createDevice()
 //	assert(adapter);
 //}
 
-void CDXCRenderer::createCommandsManagers()
+void DXRTRenderer::createCommandsManagers()
 {
 	const D3D12_COMMAND_LIST_TYPE commandsType = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
@@ -139,24 +156,7 @@ void CDXCRenderer::createCommandsManagers()
 	assert(SUCCEEDED(hr));
 }
 
-//void CDXCRenderer::createCommandsManagers()
-//{
-//	const D3D12_COMMAND_LIST_TYPE commandsType = D3D12_COMMAND_LIST_TYPE_DIRECT;
-//
-//	D3D12_COMMAND_QUEUE_DESC cqDesc = {};
-//	cqDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-//	cqDesc.Type = commandsType;
-//	HRESULT hr = d3d12Device->CreateCommandQueue(&cqDesc, IID_PPV_ARGS(&commandQueue));
-//	assert(SUCCEEDED(hr));
-//
-//	hr = d3d12Device->CreateCommandAllocator(commandsType, IID_PPV_ARGS(&commandAllocator));
-//	assert(SUCCEEDED(hr));
-//
-//	hr = d3d12Device->CreateCommandList(0, commandsType, commandAllocator, nullptr, IID_PPV_ARGS(&commandList));
-//	assert(SUCCEEDED(hr));
-//}
-
-void CDXCRenderer::createGPUTexture()
+void DXRTRenderer::createGPUTexture()
 {
 	textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	textureDesc.Width = 800;
@@ -181,7 +181,7 @@ void CDXCRenderer::createGPUTexture()
 	assert(SUCCEEDED(hr));
 }
 
-void CDXCRenderer::createRenderTargetView()
+void DXRTRenderer::createRenderTargetView()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 	rtvHeapDesc.NumDescriptors = 1;
@@ -194,7 +194,7 @@ void CDXCRenderer::createRenderTargetView()
 	d3d12Device->CreateRenderTargetView(renderTarget, nullptr, rtvHandle);
 }
 
-void CDXCRenderer::generateConstColorTexture()
+void DXRTRenderer::generateConstColorTexture()
 {
 	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
@@ -202,7 +202,7 @@ void CDXCRenderer::generateConstColorTexture()
 	commandList->ClearRenderTargetView(rtvHandle, rendColor, 0, nullptr);
 }
 
-void CDXCRenderer::createReadbackBuffer()
+void DXRTRenderer::createReadbackBuffer()
 {
 	UINT64 readbackBufferSize = 0;
 
@@ -233,7 +233,7 @@ void CDXCRenderer::createReadbackBuffer()
 	assert(SUCCEEDED(hr));
 }
 
-void CDXCRenderer::createFence()
+void DXRTRenderer::createFence()
 {
 	HRESULT hr = d3d12Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&renderFramefence));
 	assert(SUCCEEDED(hr));
@@ -244,7 +244,60 @@ void CDXCRenderer::createFence()
 	renderFramefenceValue = 1;
 }
 
-void CDXCRenderer::waitForGPURenderFrame()
+void DXRTRenderer::createSwapChain(HWND hwnd)
+{
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+	swapChainDesc.Width = 800;
+	swapChainDesc.Height = 600;
+	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	swapChainDesc.BufferCount = 2;
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	swapChainDesc.SampleDesc.Count = 1;
+
+	IDXGISwapChain1Ptr swapChain1;
+
+	HRESULT hr = dxgiFactory->CreateSwapChainForHwnd(
+		commandQueue,
+		hwnd,
+		&swapChainDesc,
+		nullptr,
+		nullptr,
+		&swapChain1
+	);
+
+	assert(SUCCEEDED(hr));
+
+	hr = swapChain1->QueryInterface(IID_PPV_ARGS(&swapChain));
+	assert(SUCCEEDED(hr));
+}
+
+void DXRTRenderer::createRenderTargetViewsFromSwapChain()
+{
+	for (UINT scBuffIdx = 0; scBuffIdx < FrameCount; scBuffIdx++)
+	{
+		const HRESULT hr = swapChain->GetBuffer(scBuffIdx, IID_PPV_ARGS(&renderTargets[scBuffIdx]));
+		assert(SUCCEEDED(hr));
+
+		rtvHandles[scBuffIdx] = swapChainRTVHeap->GetCPUDescriptorHandleForHeapStart();
+		rtvHandles[scBuffIdx].ptr += scBuffIdx * rtvDescriptorSize;
+		d3d12Device->CreateRenderTargetView(renderTargets[scBuffIdx], nullptr, rtvHandles[scBuffIdx]);
+	}
+}
+
+void DXRTRenderer::createDescriptorHeapForSwapChain()
+{
+	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+	rtvHeapDesc.NumDescriptors = FrameCount;
+	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+	assert(SUCCEEDED(d3d12Device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&swapChainRTVHeap))));
+
+	rtvDescriptorSize = d3d12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+}
+
+void DXRTRenderer::waitForGPURenderFrame()
 {
 	if (renderFramefence->GetCompletedValue() < renderFramefenceValue)
 	{
@@ -255,7 +308,7 @@ void CDXCRenderer::waitForGPURenderFrame()
 	}
 }
 
-void CDXCRenderer::recordExecuteAndReadback()
+void DXRTRenderer::recordExecuteAndReadback()
 {
 	// Transition render target to COPY_SOURCE
 	D3D12_RESOURCE_BARRIER barrier = {};
@@ -297,7 +350,7 @@ void CDXCRenderer::recordExecuteAndReadback()
 }
 
 
-void CDXCRenderer::writeImageToFile()
+void DXRTRenderer::writeImageToFile()
 {
 	void* renderTargetData;
 	HRESULT hr = readbackBuffer->Map(0, nullptr, &renderTargetData);
@@ -328,7 +381,7 @@ void CDXCRenderer::writeImageToFile()
 	readbackBuffer->Unmap(0, nullptr);
 }
 
-void CDXCRenderer::frameBegin()
+void DXRTRenderer::frameBegin()
 {
 	assert(SUCCEEDED(commandAllocator->Reset()));
 	assert(SUCCEEDED(commandList->Reset(commandAllocator, nullptr)));
@@ -341,16 +394,23 @@ void CDXCRenderer::frameBegin()
 	rendColor[3] = 1.f;
 }
 
-void CDXCRenderer::frameEnd()
+void DXRTRenderer::frameEnd()
 {
 	// Wait for GPU to finish
 	waitForGPURenderFrame();
 	renderFramefenceValue++;
 
 	frameIdx++;
+
+	swapChainFrameIdx = swapChain->GetCurrentBackBufferIndex();
 }
 
-void CDXCRenderer::renderFrame()
+void DXRTRenderer::stopRendering()
+{
+	//waitForGPURenderFrame(); Bug arises
+}
+
+void DXRTRenderer::renderFrame()
 {
 	// Reset allocator & command list before recording
 	frameBegin();
@@ -359,10 +419,37 @@ void CDXCRenderer::renderFrame()
 	generateConstColorTexture();
 	recordExecuteAndReadback(); // This closes the command list and executes it
 
-	// Signal fence with current value
-	HRESULT hr = commandQueue->Signal(renderFramefence, renderFramefenceValue);
-	assert(SUCCEEDED(hr));
-
 	frameEnd();
+}
+
+void DXRTRenderer::renderFrameWithSwapChain()
+{
+	frameBegin();
+	
+	D3D12_RESOURCE_BARRIER barrier{};
+	barrier.Transition.pResource = renderTargets[swapChainFrameIdx];
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	commandList->ResourceBarrier(1, &barrier);
+
+	commandList->OMSetRenderTargets(1, &rtvHandles[swapChainFrameIdx], FALSE, nullptr);
+	commandList->ClearRenderTargetView(rtvHandles[swapChainFrameIdx], rendColor, 0, nullptr);
+
+	barrier.Transition.pResource = renderTargets[swapChainFrameIdx];
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+	commandList->ResourceBarrier(1, &barrier);
+
+	commandList->Close();
+
+	ID3D12CommandList* ppCommandLists[] = { commandList };
+	commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
+	commandQueue->Signal(renderFramefence, renderFramefenceValue);
+
+	swapChain->Present(0, 0);
+
+	waitForGPURenderFrame();
+	frameEnd();	
 }
 

@@ -37,6 +37,11 @@ DXRTMainWindow::DXRTMainWindow(DXRTApp* app, QWidget* parent) : QMainWindow(pare
     createMenusAndToolbars();
 }
 
+HWND DXRTMainWindow::getNativeWindowHandle()
+{
+   return viewport->getNativeWindowHandle();
+}
+
 void DXRTMainWindow::setFPS(const int fps)
 {
     statusFPS->setText(QString("FPS: %1").arg(fps));

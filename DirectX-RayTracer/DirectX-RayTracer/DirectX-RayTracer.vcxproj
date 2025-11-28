@@ -146,13 +146,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
-    <ClCompile Include="CDXCRenderer.cpp" />
+    <ClCompile Include="DXRTRenderer.cpp" />
     <ClCompile Include="DXRTApp.cpp" />
     <ClCompile Include="DXRTMainWindow.cpp" />
     <ClCompile Include="DXRTViewportWidget.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CDXCRenderer.h" />
+    <ClInclude Include="DXRTRenderer.h" />
     <QtMoc Include="DXRTViewportWidget.h" />
     <QtMoc Include="DXRTMainWindow.h" />
     <QtMoc Include="DXRTApp.h" />

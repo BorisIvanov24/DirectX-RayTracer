@@ -22,6 +22,8 @@ public:
 	// Close the editor properly, wait for the current GPU tasks
 	void closeEvent(QCloseEvent* event) override;
 
+	HWND getNativeWindowHandle();
+
 private:
 	// Create UI elements outside the viewport widget
 	void createMenusAndToolbars();
