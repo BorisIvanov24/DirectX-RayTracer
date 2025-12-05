@@ -3,7 +3,7 @@
 DXRTViewportWidget::DXRTViewportWidget(QWidget* parent)
 	: QWidget(parent)
 {
-	setStyleSheet("background-color: black; border: 1px solid #555;");
+	resize(800, 800);
 }
 
 void DXRTViewportWidget::updateImage(const QImage& image)

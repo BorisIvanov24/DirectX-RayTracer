@@ -23,7 +23,7 @@
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{0afe513f-64da-4485-9cf9-41b90abcd36d}</ProjectGuid>
     <RootNamespace>DirectXRayTracer</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
     <Keyword>QtVS_v304</Keyword>
     <QtMsBuild Condition="'$(QtMsBuild)'=='' OR !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
   </PropertyGroup>
@@ -88,6 +88,12 @@
     <Import Project="$(QtMsBuild)\Qt.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -123,10 +129,12 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>D:\C++\DirectX-Headers\include;D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\x64\Debug;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -138,10 +146,12 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>D:\C++\DirectX-Headers\include;D:\C++\Chaos\DirectX-RayTracer\DirectX-RayTracer\DirectX-RayTracer\x64\Debug;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -156,6 +166,50 @@
     <QtMoc Include="DXRTViewportWidget.h" />
     <QtMoc Include="DXRTMainWindow.h" />
     <QtMoc Include="DXRTApp.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="HLSL\ConstColor.hlsl">
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+      <EnableUnboundedDescriptorTables Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</EnableUnboundedDescriptorTables>
+      <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</TreatWarningAsError>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">g_const_color</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)\CompiledShaders\%(Filename).hlsl.h</HeaderFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)\CompiledObjectFiles\%(Filename).cso</ObjectFileOutput>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">-enable-16bit-types %(AdditionalOptions)</AdditionalOptions>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSMain</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.3</ShaderModel>
+      <EnableUnboundedDescriptorTables Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</EnableUnboundedDescriptorTables>
+      <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</TreatWarningAsError>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">g_const_color</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)\CompiledShaders\%(Filename).hlsl.h</HeaderFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)\CompiledObjectFiles\%(Filename).cso</ObjectFileOutput>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">-enable-16bit-types %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="HLSL\ConstColorVS.hlsl">
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VSMain</EntryPointName>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+      <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</TreatWarningAsError>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">g_const_color_vs</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)\CompiledShaders\%(Filename).hlsl.h</HeaderFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)\CompiledObjectFiles\%(Filename).cso</ObjectFileOutput>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">-enable-16bit-types %(AdditionalOptions)</AdditionalOptions>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VSMain</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.3</ShaderModel>
+      <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</TreatWarningAsError>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">g_const_color_vs</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)\CompiledShaders\%(Filename).hlsl.h</HeaderFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)\CompiledObjectFiles\%(Filename).cso</ObjectFileOutput>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">-enable-16bit-types %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Import Project="$(QtMsBuild)\qt.targets" Condition="Exists('$(QtMsBuild)\qt.targets')" />

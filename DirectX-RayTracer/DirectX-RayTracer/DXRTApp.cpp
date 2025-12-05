@@ -40,7 +40,7 @@ bool DXRTApp::initWindow()
 
 void DXRTApp::renderFrame()
 {
-	renderer.renderFrameWithSwapChain();
+	renderer.renderFrame();
 	//mainWnd->updateViewport(renderer.getQImageForFrame());
 	frameIdxAtLastFPSCalc++;
 }

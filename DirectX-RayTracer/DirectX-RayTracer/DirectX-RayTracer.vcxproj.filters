@@ -13,22 +13,31 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\HLSL">
+      <UniqueIdentifier>{e30e0abe-83a9-4a8e-8027-fbbb05f15c7a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\HLSL\overlay">
+      <UniqueIdentifier>{4c15a9e4-7ccb-44d4-b2a1-9b8970df51c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\app">
+      <UniqueIdentifier>{aef52eb6-d9bc-47ce-8d4e-0b928243ad94}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DXRTRenderer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\app</Filter>
     </ClCompile>
     <ClCompile Include="DXRTApp.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\app</Filter>
     </ClCompile>
     <ClCompile Include="DXRTMainWindow.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\app</Filter>
+    </ClCompile>
+    <ClCompile Include="DXRTRenderer.cpp">
+      <Filter>Source Files\app</Filter>
     </ClCompile>
     <ClCompile Include="DXRTViewportWidget.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\app</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -46,5 +55,13 @@
     <QtMoc Include="DXRTViewportWidget.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="HLSL\ConstColor.hlsl">
+      <Filter>Source Files\HLSL\overlay</Filter>
+    </FxCompile>
+    <FxCompile Include="HLSL\ConstColorVS.hlsl">
+      <Filter>Source Files\HLSL\overlay</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

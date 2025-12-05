@@ -1,5 +1,5 @@
 #pragma once
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <dxgi1_4.h>
 #include <comdef.h>
 #include <QImage>
@@ -17,8 +17,17 @@ CDXC_MAKE_SMART_COM_POINTER(ID3D12DescriptorHeap);
 CDXC_MAKE_SMART_COM_POINTER(ID3D12Fence);
 CDXC_MAKE_SMART_COM_POINTER(IDXGISwapChain1);
 CDXC_MAKE_SMART_COM_POINTER(IDXGISwapChain3);
+CDXC_MAKE_SMART_COM_POINTER(ID3D12RootSignature);
+CDXC_MAKE_SMART_COM_POINTER(ID3DBlob);
+CDXC_MAKE_SMART_COM_POINTER(ID3D12PipelineState);
 
 #define RGBA_COLOR_CHANNELS_COUNT 4
+
+struct Vertex
+{
+	float x;
+	float y;
+};
 
 class DXRTRenderer
 {
@@ -73,6 +82,16 @@ private:
 	// Stall the CPU untill the GPU finishes with the frame rendering
 	void waitForGPURenderFrame();
 
+	// Create the vertices that will be rendered by the pipeline for the frame
+	// Use an upload heap to store the vertices on the CPU memory, the GPU will access them using the PCIe
+	void createVertexBuffer();
+
+	void createRootSignature();
+
+	void createPipelineState();
+
+	void createViewport();
+
 	void recordExecuteAndReadback();
 
 	void writeImageToFile();
@@ -113,6 +132,13 @@ private:
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[FrameCount];
 	ID3D12DescriptorHeapPtr swapChainRTVHeap;
 
+	ID3D12ResourcePtr vertexBuffer; // The vertices that we want to render
+	D3D12_VERTEX_BUFFER_VIEW vbView; // Vertex buffer descriptor
+	ID3D12RootSignaturePtr rootSignature;
+	ID3D12PipelineStatePtr state;
+
+	D3D12_VIEWPORT viewport;
+	D3D12_RECT scissorRect;
 
 	float rendColor[4] = { 0.f, 1.f, 0.f, 1.f };
 	int frameIdx = 1;
