@@ -3,6 +3,7 @@
 #include <dxgi1_4.h>
 #include <comdef.h>
 #include <QImage>
+#include <dxcapi.h>
 
 #define CDXC_MAKE_SMART_COM_POINTER(_a) _COM_SMARTPTR_TYPEDEF(_a, __uuidof(_a))
 
@@ -20,6 +21,21 @@ CDXC_MAKE_SMART_COM_POINTER(IDXGISwapChain3);
 CDXC_MAKE_SMART_COM_POINTER(ID3D12RootSignature);
 CDXC_MAKE_SMART_COM_POINTER(ID3DBlob);
 CDXC_MAKE_SMART_COM_POINTER(ID3D12PipelineState);
+CDXC_MAKE_SMART_COM_POINTER(IDxcBlob);
+CDXC_MAKE_SMART_COM_POINTER(IDxcLibrary);
+CDXC_MAKE_SMART_COM_POINTER(IDxcCompiler);
+CDXC_MAKE_SMART_COM_POINTER(IDxcBlobEncoding);
+CDXC_MAKE_SMART_COM_POINTER(IDxcOperationResult);
+CDXC_MAKE_SMART_COM_POINTER(IDxcUtils);
+CDXC_MAKE_SMART_COM_POINTER(IDxcCompiler3);
+CDXC_MAKE_SMART_COM_POINTER(IDxcResult);
+CDXC_MAKE_SMART_COM_POINTER(IDxcBlobEncoding);
+CDXC_MAKE_SMART_COM_POINTER(IDxcBlobUtf8);
+CDXC_MAKE_SMART_COM_POINTER(ID3D12Device5);
+CDXC_MAKE_SMART_COM_POINTER(ID3D12StateObject);
+CDXC_MAKE_SMART_COM_POINTER(ID3D12StateObjectProperties);
+CDXC_MAKE_SMART_COM_POINTER(ID3D12GraphicsCommandList4);
+CDXC_MAKE_SMART_COM_POINTER(ID3D12InfoQueue);
 
 #define RGBA_COLOR_CHANNELS_COUNT 4
 
@@ -44,6 +60,8 @@ public:
 
 	// Create the necessary DirectX infrastructure and rendering resources
 	void prepareForRendering(HWND hwnd);
+
+	void prepareForRayTracing();
 
 	QImage getQImageForFrame();
 
@@ -96,15 +114,41 @@ private:
 
 	void writeImageToFile();
 
+	void rotateTriangleVertices();
+
 	void frameBegin();
 
 	void frameEnd();
+
+	void createGlobalRootSignature();
+
+	void createRayTracingPipelineState();
+
+	void createRayTracingShaderTexture();
+
+	void createShaderBindingTable();
+
+	IDxcBlobPtr compileShader(const std::wstring& fileName, const std::wstring& entryPoint,
+							  const std::wstring& target);
+
+	D3D12_STATE_SUBOBJECT createRayGenSubObject();
+	D3D12_STATE_SUBOBJECT createMissLibSubObject();
+	D3D12_STATE_SUBOBJECT createShaderConfigSubObject();
+	D3D12_STATE_SUBOBJECT createPipelineConfigSubObject();
+	D3D12_STATE_SUBOBJECT createGlobalRootSignatureSubObject();
+
+	void createSBTUploadHeap(const UINT sbtSize);
+	void createSBTDefaultHeap(const UINT sbtSize);
+	void copySBTDataToUploadHeap(void* rayGenID);
+	void copySBTDataToDefaultHeap();
+	void prepareDispatchRaysDesc(const UINT sbtSize);
 
 private:
 	
 	IDXGIFactory4Ptr dxgiFactory; // Grants access to the GPUs on the machine
 	IDXGIAdapter1Ptr adapter;	// Represents the video card used for rendering
 	ID3D12DevicePtr d3d12Device; // Allows access to the GPU for the purpose of Direct3D API
+	ID3D12Device5Ptr dxrDevice;
 
 	ID3D12CommandQueuePtr commandQueue; // Holds the command lists and will be given to the GPU for execution
 	ID3D12CommandAllocatorPtr commandAllocator; // Manages the GPU memory for the commands
@@ -117,6 +161,30 @@ private:
 
 	ID3D12ResourcePtr readbackBuffer; // The buffer which will hold the rendered image
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT renderTargetFootprint; // Memory layout information for the texture
+
+	ID3D12ResourcePtr raytracingOutput;
+	ID3D12DescriptorHeapPtr uavHeap;
+	ID3D12RootSignaturePtr globalRootSignature;
+
+	D3D12_EXPORT_DESC rayGenExportDesc;
+	D3D12_DXIL_LIBRARY_DESC rayGenLib;
+	IDxcBlobPtr rayGenBlob;
+
+	D3D12_EXPORT_DESC missExportDesc;
+	D3D12_DXIL_LIBRARY_DESC missLib;
+	IDxcBlobPtr missBlob;
+
+	D3D12_RAYTRACING_SHADER_CONFIG shaderConfig;
+	D3D12_RAYTRACING_PIPELINE_CONFIG pipelineConfig;
+	D3D12_GLOBAL_ROOT_SIGNATURE rootSigDesc;
+	D3D12_DISPATCH_RAYS_DESC raysDesc;
+
+	ID3D12StateObjectPtr rtStateObject;
+
+	ID3D12ResourcePtr sbtUploadBuff;
+	ID3D12ResourcePtr sbtDefaultBuff;
+
+	ID3D12GraphicsCommandList4Ptr dxrCmdList;
 
 	ID3D12FencePtr renderFramefence; // Synchronize the CPU and GPU after frame rendering
 	HANDLE renderFrameEventHandle = nullptr; // The event which is fired when the GPU is ready with the rendering
@@ -132,10 +200,14 @@ private:
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[FrameCount];
 	ID3D12DescriptorHeapPtr swapChainRTVHeap;
 
-	ID3D12ResourcePtr vertexBuffer; // The vertices that we want to render
+	ID3D12ResourcePtr vertexBuffer;
+	ID3D12ResourcePtr vertexBufferUpload;// The vertices that we want to render
 	D3D12_VERTEX_BUFFER_VIEW vbView; // Vertex buffer descriptor
 	ID3D12RootSignaturePtr rootSignature;
 	ID3D12PipelineStatePtr state;
+
+	D3D12_ROOT_CONSTANTS constant;
+	D3D12_ROOT_PARAMETER param;
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;

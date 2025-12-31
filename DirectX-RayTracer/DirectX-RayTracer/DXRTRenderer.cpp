@@ -46,14 +46,17 @@ void DXRTRenderer::prepareForRendering(HWND hwnd)
 	createSwapChain(hwnd);
 	createDescriptorHeapForSwapChain();
 	createRenderTargetViewsFromSwapChain();
-	createRootSignature();
-	createVertexBuffer();
 	createViewport();
-	createPipelineState();
 
-	/*createGPUTexture();
-	createRenderTargetView();
-	createReadbackBuffer();*/
+	prepareForRayTracing();
+}
+
+void DXRTRenderer::prepareForRayTracing()
+{
+	createGlobalRootSignature();
+	createRayTracingPipelineState();
+	createRayTracingShaderTexture();
+	createShaderBindingTable();
 }
 
 QImage DXRTRenderer::getQImageForFrame()
@@ -127,6 +130,10 @@ void DXRTRenderer::createDevice()
 	hr = D3D12CreateDevice(bestAdapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d3d12Device));
 	assert(SUCCEEDED(hr));
 
+	hr = d3d12Device->QueryInterface(
+		IID_PPV_ARGS(&dxrDevice)
+	);
+
 	adapter = bestAdapter; // store the chosen adapter
 }
 
@@ -170,6 +177,29 @@ void DXRTRenderer::createCommandsManagers()
 	// Close it now so the allocator isn't held busy and can be Reset() later.
 	hr = commandList->Close();
 	assert(SUCCEEDED(hr));
+
+	// --- DXR interface query (CRITICAL CHECK) ---
+	hr = commandList->QueryInterface(IID_PPV_ARGS(&dxrCmdList));
+	if (FAILED(hr))
+	{
+		dxrCmdList = nullptr;
+
+		// DXR not supported – handle this gracefully
+		OutputDebugStringA(
+			"ERROR: ID3D12GraphicsCommandList4 not supported. DXR unavailable.\n"
+		);
+
+		// Choose ONE of these depending on your engine design:
+
+		// Option 1: hard fail (recommended for DXR-only renderer)
+		assert(false && "DXR command list not supported");
+
+		// Option 2: throw
+		// throw std::runtime_error("DXR not supported on this system");
+
+		// Option 3: mark DXR disabled and continue with raster path
+		// dxrSupported = false;
+	}
 }
 
 void DXRTRenderer::createGPUTexture()
@@ -317,45 +347,100 @@ void DXRTRenderer::waitForGPURenderFrame()
 
 		WaitForSingleObject(renderFrameEventHandle, INFINITE);
 	}
+	renderFramefenceValue++;
 }
 
 void DXRTRenderer::createVertexBuffer()
 {
+	// Vertex data
 	Vertex triangleVertices[] = {
 		{  0.0f,  0.5f },
 		{  0.5f, -0.5f },
 		{ -0.5f, -0.5f }
 	};
+	const UINT vertexBufferSize = sizeof(triangleVertices);
 
-	D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	D3D12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(triangleVertices));
+	// Create default heap (GPU memory)
+	D3D12_HEAP_PROPERTIES defaultHeapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	D3D12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
 
 	HRESULT hr = d3d12Device->CreateCommittedResource(
-		&heapProps,
+		&defaultHeapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&bufferDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST, // Start as copy destination
+		nullptr,
+		IID_PPV_ARGS(&vertexBuffer)
+	);
+	assert(SUCCEEDED(hr));
+
+	// Create upload heap (CPU accessible)
+	D3D12_HEAP_PROPERTIES uploadHeapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+	hr = d3d12Device->CreateCommittedResource(
+		&uploadHeapProps,
 		D3D12_HEAP_FLAG_NONE,
 		&bufferDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
-		IID_PPV_ARGS(&vertexBuffer)
+		IID_PPV_ARGS(&vertexBufferUpload)
 	);
-
 	assert(SUCCEEDED(hr));
 
+	// Copy vertex data to upload heap
 	void* pVertexData;
-	vertexBuffer->Map(0, nullptr, &pVertexData);
-	memcpy(pVertexData, triangleVertices, sizeof(triangleVertices));
-	vertexBuffer->Unmap(0, nullptr);
+	vertexBufferUpload->Map(0, nullptr, &pVertexData);
+	memcpy(pVertexData, triangleVertices, vertexBufferSize);
+	vertexBufferUpload->Unmap(0, nullptr);
 
+	assert(SUCCEEDED(commandAllocator->Reset()));
+	assert(SUCCEEDED(commandList->Reset(commandAllocator, nullptr)));
+
+	// Schedule copy from upload heap -> default heap
+	commandList->CopyBufferRegion(vertexBuffer, 0, vertexBufferUpload, 0, vertexBufferSize);
+
+	// Transition default heap to VERTEX_AND_CONSTANT_BUFFER state
+	D3D12_RESOURCE_BARRIER barrier = {};
+	barrier.Transition.pResource = vertexBuffer;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+	
+	commandList->ResourceBarrier(1, &barrier);
+
+	// Create vertex buffer view
 	vbView = D3D12_VERTEX_BUFFER_VIEW{};
 	vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
 	vbView.StrideInBytes = sizeof(Vertex);
-	vbView.SizeInBytes = sizeof(triangleVertices);
+	vbView.SizeInBytes = vertexBufferSize;
+
+	hr = commandList->Close();
+	assert(SUCCEEDED(hr));
+
+	ID3D12CommandList* ppCommandLists[] = { commandList };
+	commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
+	// Signal fence
+	hr = commandQueue->Signal(renderFramefence, renderFramefenceValue);
+	assert(SUCCEEDED(hr));
+
+	waitForGPURenderFrame();
 }
+
 
 void DXRTRenderer::createRootSignature()
 {
+	constant.ShaderRegister = 0;
+	constant.RegisterSpace = 0;
+	constant.Num32BitValues = 1;
+	
+	param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+	param.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	param.Constants = constant;
+
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
 	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+	rootSignatureDesc.NumParameters = 1;
+	rootSignatureDesc.pParameters = &param;
 
 	ID3DBlobPtr signature;
 	ID3DBlobPtr error;
@@ -491,28 +576,54 @@ void DXRTRenderer::writeImageToFile()
 	readbackBuffer->Unmap(0, nullptr);
 }
 
+void DXRTRenderer::rotateTriangleVertices()
+{
+	float angle = static_cast<float>(frameIdx) * 0.01f;
+	float cosA = cosf(angle);
+	float sinA = sinf(angle);
+
+	Vertex triangleVertices[] = {
+		{  0.0f * cosA - 0.5f * sinA,  0.0f * sinA + 0.5f * cosA },
+		{  0.5f * cosA - -0.5f * sinA,  0.5f * sinA + -0.5f * cosA },
+		{ -0.5f * cosA - -0.5f * sinA, -0.5f * sinA + -0.5f * cosA }
+	};
+
+	void* pVertexData;
+	vertexBuffer->Map(0, nullptr, &pVertexData);
+	memcpy(pVertexData, triangleVertices, sizeof(triangleVertices));
+	vertexBuffer->Unmap(0, nullptr);
+}
+
 void DXRTRenderer::frameBegin()
 {
 	assert(SUCCEEDED(commandAllocator->Reset()));
-	assert(SUCCEEDED(commandList->Reset(commandAllocator, nullptr)));
+	assert(SUCCEEDED(dxrCmdList->Reset(commandAllocator, nullptr)));
 	
 	D3D12_RESOURCE_BARRIER barrier{};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 	barrier.Transition.pResource = renderTargets[swapChainFrameIdx];
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	commandList->ResourceBarrier(1, &barrier);
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+	dxrCmdList->ResourceBarrier(1, &barrier);
 
-	commandList->OMSetRenderTargets(1, &rtvHandles[swapChainFrameIdx], FALSE, nullptr);
-	commandList->ClearRenderTargetView(rtvHandles[swapChainFrameIdx], rendColor, 0, nullptr);
+	barrier = {};
+	barrier.Transition.pResource = raytracingOutput;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+	dxrCmdList->ResourceBarrier(1, &barrier);
 
-	float frameCoef = static_cast<float>(frameIdx % 1000) / 1000.f;	
+	//commandList->OMSetRenderTargets(1, &rtvHandles[swapChainFrameIdx], FALSE, nullptr);
+	//commandList->ClearRenderTargetView(rtvHandles[swapChainFrameIdx], rendColor, 0, nullptr);
 
-	rendColor[0] = frameCoef;
-	rendColor[1] = 1.f - frameCoef;
-	rendColor[2] = 0.f;
-	rendColor[3] = 1.f;
+	////rotateTriangleVertices(); only if vertices are in an upload heap
+
+	//float frameCoef = static_cast<float>(frameIdx % 1000) / 1000.f;	
+
+	//rendColor[0] = frameCoef;
+	//rendColor[1] = 1.f - frameCoef;
+	//rendColor[2] = 0.f;
+	//rendColor[3] = 1.f;
 }
 
 void DXRTRenderer::frameEnd()
@@ -520,15 +631,22 @@ void DXRTRenderer::frameEnd()
 	D3D12_RESOURCE_BARRIER barrier{};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	barrier.Transition.pResource = renderTargets[swapChainFrameIdx];
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	commandList->ResourceBarrier(1, &barrier);
+	barrier.Transition.pResource = raytracingOutput;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+	dxrCmdList->ResourceBarrier(1, &barrier);
 
-	HRESULT hr = commandList->Close();
+	dxrCmdList->CopyResource(renderTargets[swapChainFrameIdx], raytracingOutput);
+
+	barrier.Transition.pResource = renderTargets[swapChainFrameIdx];
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+	dxrCmdList->ResourceBarrier(1, &barrier);
+
+	HRESULT hr = dxrCmdList->Close();
 	assert(SUCCEEDED(hr));
 
-	ID3D12CommandList* ppCommandLists[] = { commandList };
+	ID3D12CommandList* ppCommandLists[] = { dxrCmdList };
 	commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 	// Signal fence
@@ -540,11 +658,477 @@ void DXRTRenderer::frameEnd()
 
 	// Wait for GPU to finish
 	waitForGPURenderFrame();
-	renderFramefenceValue++;
 
 	frameIdx++;
-
 	swapChainFrameIdx = swapChain->GetCurrentBackBufferIndex();
+}
+
+void DXRTRenderer::createGlobalRootSignature()
+{
+	D3D12_DESCRIPTOR_RANGE uavRange = {};
+	uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+	uavRange.NumDescriptors = 1;
+	uavRange.BaseShaderRegister = 0;
+	uavRange.RegisterSpace = 0;
+
+	D3D12_ROOT_PARAMETER rootParam = {};
+	rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	rootParam.DescriptorTable.NumDescriptorRanges = 1;
+	rootParam.DescriptorTable.pDescriptorRanges = &uavRange;
+
+	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
+	rootSigDesc.NumParameters = 1;
+	rootSigDesc.pParameters = &rootParam;
+	rootSigDesc.NumStaticSamplers = 0;
+	rootSigDesc.pStaticSamplers = nullptr;
+	rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+	ID3DBlobPtr sigBlob;
+	ID3DBlobPtr errorBlob;
+
+	HRESULT hr = D3D12SerializeRootSignature(
+		&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1, &sigBlob, &errorBlob);
+	assert(SUCCEEDED(hr));
+
+	hr = d3d12Device->CreateRootSignature(
+		0,
+		sigBlob->GetBufferPointer(),
+		sigBlob->GetBufferSize(),
+		IID_PPV_ARGS(&globalRootSignature)
+	);
+	assert(SUCCEEDED(hr));
+}
+
+void DXRTRenderer::createRayTracingPipelineState()
+{
+	D3D12_STATE_SUBOBJECT rayGenLibSubobject = createRayGenSubObject();
+	D3D12_STATE_SUBOBJECT missLibSubobject = createMissLibSubObject();
+	D3D12_STATE_SUBOBJECT shaderConfigSubobject = createShaderConfigSubObject();
+	D3D12_STATE_SUBOBJECT pipelineConfigSubObject = createPipelineConfigSubObject();
+	D3D12_STATE_SUBOBJECT rootSigSubobject = createGlobalRootSignatureSubObject();
+
+	std::vector<D3D12_STATE_SUBOBJECT> subobjects = {
+		rayGenLibSubobject,
+		missLibSubobject,
+		shaderConfigSubobject,
+		pipelineConfigSubObject,
+		rootSigSubobject
+	};
+
+	D3D12_STATE_OBJECT_DESC rtpsoDesc = {};
+	rtpsoDesc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
+	rtpsoDesc.NumSubobjects = (UINT)subobjects.size();
+	rtpsoDesc.pSubobjects = subobjects.data();
+
+	HRESULT hr = dxrDevice->CreateStateObject(&rtpsoDesc, IID_PPV_ARGS(&rtStateObject));
+
+	assert(SUCCEEDED(hr));
+
+	if (FAILED(hr))
+	{
+#if defined(_DEBUG)
+		ID3D12InfoQueuePtr infoQueue;
+		if (SUCCEEDED(dxrDevice->QueryInterface(IID_PPV_ARGS(&infoQueue))))
+		{
+			UINT64 count = infoQueue->GetNumStoredMessages();
+			for (UINT64 i = 0; i < count; ++i)
+			{
+				SIZE_T length = 0;
+				infoQueue->GetMessage(i, nullptr, &length);
+
+				std::vector<char> buffer(length);
+				D3D12_MESSAGE* msg = (D3D12_MESSAGE*)buffer.data();
+				infoQueue->GetMessage(i, msg, &length);
+
+				OutputDebugStringA(msg->pDescription);
+				OutputDebugStringA("\n");
+			}
+			infoQueue->ClearStoredMessages();
+		}
+#endif
+
+		assert(false);
+	}
+}
+
+void DXRTRenderer::createRayTracingShaderTexture()
+{
+	D3D12_RESOURCE_DESC texDesc = {};
+texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+texDesc.Width = 800;
+texDesc.Height = 800;
+texDesc.DepthOrArraySize = 1;            // required
+texDesc.MipLevels = 1;                   // recommended
+texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+texDesc.SampleDesc.Count = 1;            // required
+texDesc.SampleDesc.Quality = 0;          // required
+texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+	D3D12_HEAP_PROPERTIES heapProps = {};
+	heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+	HRESULT hr = d3d12Device->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&texDesc,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		nullptr,
+		IID_PPV_ARGS(&raytracingOutput)
+	);
+
+	if (FAILED(hr))
+	{
+#if defined(_DEBUG)
+		ID3D12InfoQueue* infoQueue = nullptr;
+		if (SUCCEEDED(d3d12Device->QueryInterface(IID_PPV_ARGS(&infoQueue))))
+		{
+			const UINT64 messageCount = infoQueue->GetNumStoredMessages();
+			for (UINT64 i = 0; i < messageCount; ++i)
+			{
+				SIZE_T messageLength = 0;
+				infoQueue->GetMessage(i, nullptr, &messageLength);
+
+				std::vector<char> bytes(messageLength);
+				D3D12_MESSAGE* message = reinterpret_cast<D3D12_MESSAGE*>(bytes.data());
+				infoQueue->GetMessage(i, message, &messageLength);
+
+				OutputDebugStringA("D3D12 ERROR: ");
+				OutputDebugStringA(message->pDescription);
+				OutputDebugStringA("\n");
+			}
+			infoQueue->ClearStoredMessages();
+			infoQueue->Release();
+		}
+#endif
+		assert(false && "CreateCommittedResource failed");
+		return;
+	}
+
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.NumDescriptors = 1;
+	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	
+	
+	hr = d3d12Device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&uavHeap));
+	assert(SUCCEEDED(hr));
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
+	d3d12Device->CreateUnorderedAccessView(
+		raytracingOutput,
+		nullptr,
+		&uavDesc,
+		uavHeap->GetCPUDescriptorHandleForHeapStart()
+	);
+}
+
+inline UINT alignedSize(UINT size, UINT alignBytes)
+{
+	return alignBytes * (size / alignBytes + (size % alignBytes ? 1 : 0));
+}
+
+void DXRTRenderer::createShaderBindingTable()
+{
+	ID3D12StateObjectPropertiesPtr rtStateObjectProps;
+	HRESULT hr = rtStateObject->QueryInterface(IID_PPV_ARGS(&rtStateObjectProps));
+
+	void* rayGenID = rtStateObjectProps->GetShaderIdentifier(L"rayGen");
+
+	const UINT shaderIDSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+	const UINT recordSize = alignedSize(shaderIDSize, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+	const UINT sbtSize = alignedSize(recordSize, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+
+	createSBTUploadHeap(sbtSize);
+	createSBTDefaultHeap(sbtSize);
+	copySBTDataToUploadHeap(rayGenID);
+	copySBTDataToDefaultHeap();
+	prepareDispatchRaysDesc(sbtSize);
+}
+
+IDxcBlobPtr DXRTRenderer::compileShader(
+	const std::wstring& fileName,
+	const std::wstring& entryPoint,
+	const std::wstring& target)
+{
+	HRESULT hr;
+
+	IDxcUtilsPtr utils;
+	IDxcCompiler3Ptr compiler;
+
+	hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils));
+	if (FAILED(hr))
+	{
+		OutputDebugStringA("Failed to create IDxcUtils\n");
+		return nullptr;
+	}
+
+	hr = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler));
+	if (FAILED(hr))
+	{
+		OutputDebugStringA("Failed to create IDxcCompiler3\n");
+		return nullptr;
+	}
+
+	IDxcBlobEncodingPtr sourceBlob;
+	hr = utils->LoadFile(fileName.c_str(), nullptr, &sourceBlob);
+	if (FAILED(hr))
+	{
+		OutputDebugStringA("Failed to load shader file\n");
+		return nullptr;
+	}
+
+	DxcBuffer source = {};
+	source.Ptr = sourceBlob->GetBufferPointer();
+	source.Size = sourceBlob->GetBufferSize();
+	source.Encoding = DXC_CP_UTF8;
+
+	LPCWSTR args[] =
+	{
+		L"-E", entryPoint.c_str(),
+		L"-T", target.c_str(),
+		L"-Zi",
+		L"-Qembed_debug",
+		L"-Od",
+		L"-Zpr"
+	};
+
+	IDxcResultPtr result;
+	hr = compiler->Compile(
+		&source,
+		args,
+		_countof(args),
+		nullptr,
+		IID_PPV_ARGS(&result)
+	);
+
+	if (FAILED(hr))
+	{
+		OutputDebugStringA("DXC Compile() call failed\n");
+		return nullptr;
+	}
+
+	// Print warnings / errors
+	IDxcBlobUtf8Ptr errors;
+	result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
+	if (errors && errors->GetStringLength() > 0)
+	{
+		OutputDebugStringA(errors->GetStringPointer());
+	}
+
+	// CHECK ACTUAL COMPILE STATUS
+	HRESULT compileStatus = S_OK;
+	hr = result->GetStatus(&compileStatus);
+	if (FAILED(hr) || FAILED(compileStatus))
+	{
+		OutputDebugStringA("Shader compilation failed\n");
+		return nullptr;
+	}
+
+	// Get compiled DXIL
+	IDxcBlobPtr shaderBlob;
+	hr = result->GetOutput(
+		DXC_OUT_OBJECT,
+		IID_PPV_ARGS(&shaderBlob),
+		nullptr
+	);
+
+	if (FAILED(hr) || shaderBlob == nullptr)
+	{
+		OutputDebugStringA("Failed to retrieve compiled shader blob\n");
+		return nullptr;
+	}
+
+	return shaderBlob;
+}
+
+
+D3D12_STATE_SUBOBJECT DXRTRenderer::createRayGenSubObject()
+{
+	rayGenBlob = compileShader(L"HLSL/ray_tracing_shaders.hlsl", L"rayGen", L"lib_6_5");
+
+	rayGenExportDesc = D3D12_EXPORT_DESC{};
+	rayGenExportDesc.Name = L"rayGen";
+	rayGenExportDesc.Flags = D3D12_EXPORT_FLAG_NONE;
+	
+	rayGenLib.DXILLibrary.pShaderBytecode = rayGenBlob->GetBufferPointer();
+	rayGenLib.DXILLibrary.BytecodeLength = rayGenBlob->GetBufferSize();
+	rayGenLib.NumExports = 1;
+	rayGenLib.pExports = &rayGenExportDesc;
+	
+	D3D12_STATE_SUBOBJECT rayGenLibSubobject = {};
+	rayGenLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+	rayGenLibSubobject.pDesc = &rayGenLib;
+
+	return rayGenLibSubobject;
+}
+
+D3D12_STATE_SUBOBJECT DXRTRenderer::createMissLibSubObject()
+{
+	missBlob = compileShader(L"HLSL/ray_tracing_shaders.hlsl", L"miss", L"lib_6_5");
+
+	missExportDesc = D3D12_EXPORT_DESC{};
+	missExportDesc.Name = L"miss";
+	missExportDesc.Flags = D3D12_EXPORT_FLAG_NONE;
+
+	missLib.DXILLibrary.pShaderBytecode = missBlob->GetBufferPointer();
+	missLib.DXILLibrary.BytecodeLength = missBlob->GetBufferSize();
+	missLib.NumExports = 1;
+	missLib.pExports = &missExportDesc;
+
+	D3D12_STATE_SUBOBJECT missLibSubobject = {};
+	missLibSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+	missLibSubobject.pDesc = &missLib;
+
+	return missLibSubobject;
+}
+
+D3D12_STATE_SUBOBJECT DXRTRenderer::createShaderConfigSubObject()
+{
+	shaderConfig = D3D12_RAYTRACING_SHADER_CONFIG{};
+	shaderConfig.MaxPayloadSizeInBytes = 4 * 4;
+
+	D3D12_STATE_SUBOBJECT shaderConfigSubobject = {};
+	shaderConfigSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
+	shaderConfigSubobject.pDesc = &shaderConfig;
+
+	return shaderConfigSubobject;
+}
+
+D3D12_STATE_SUBOBJECT DXRTRenderer::createPipelineConfigSubObject()
+{
+	pipelineConfig = D3D12_RAYTRACING_PIPELINE_CONFIG{};
+	pipelineConfig.MaxTraceRecursionDepth = 1;
+
+	D3D12_STATE_SUBOBJECT pipelineConfigSubobject = {};
+	pipelineConfigSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
+	pipelineConfigSubobject.pDesc = &pipelineConfig;
+
+	return pipelineConfigSubobject;
+}
+
+D3D12_STATE_SUBOBJECT DXRTRenderer::createGlobalRootSignatureSubObject()
+{
+	rootSigDesc = D3D12_GLOBAL_ROOT_SIGNATURE{ globalRootSignature };
+
+	D3D12_STATE_SUBOBJECT rootSigSubobject = {};
+	rootSigSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE;
+	rootSigSubobject.pDesc = &rootSigDesc;
+
+	return rootSigSubobject;
+}
+
+void DXRTRenderer::createSBTUploadHeap(const UINT sbtSize)
+{
+	D3D12_HEAP_PROPERTIES heapProps = {};
+	heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+	heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	heapProps.CreationNodeMask = 1;
+	heapProps.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC sbtDesc = {};
+	sbtDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	sbtDesc.Alignment = 0;
+	sbtDesc.Width = sbtSize;
+	sbtDesc.Height = 1;
+	sbtDesc.DepthOrArraySize = 1;
+	sbtDesc.MipLevels = 1;
+	sbtDesc.Format = DXGI_FORMAT_UNKNOWN;
+	sbtDesc.SampleDesc.Count = 1;
+	sbtDesc.SampleDesc.Quality = 0;
+	sbtDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	sbtDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	d3d12Device->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&sbtDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&sbtUploadBuff)
+	);
+}
+
+void DXRTRenderer::createSBTDefaultHeap(const UINT sbtSize)
+{
+	D3D12_HEAP_PROPERTIES defaultHeapProps = {};
+	defaultHeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+	defaultHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	defaultHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	defaultHeapProps.CreationNodeMask = 1;
+	defaultHeapProps.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC sbtDesc = {};
+	sbtDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	sbtDesc.Alignment = 0;
+	sbtDesc.Width = sbtSize;
+	sbtDesc.Height = 1;
+	sbtDesc.DepthOrArraySize = 1;
+	sbtDesc.MipLevels = 1;
+	sbtDesc.Format = DXGI_FORMAT_UNKNOWN;
+	sbtDesc.SampleDesc.Count = 1;
+	sbtDesc.SampleDesc.Quality = 0;
+	sbtDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	sbtDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	d3d12Device->CreateCommittedResource(
+		&defaultHeapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&sbtDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&sbtDefaultBuff)
+	);
+}
+
+void DXRTRenderer::copySBTDataToUploadHeap(void* rayGenID)
+{
+	uint8_t* pData = nullptr;
+	sbtUploadBuff->Map(0, nullptr, reinterpret_cast<void**>(&pData));
+	memcpy(pData, rayGenID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	sbtUploadBuff->Unmap(0, nullptr);
+}
+
+void DXRTRenderer::copySBTDataToDefaultHeap()
+{
+	HRESULT hr = commandAllocator->Reset();
+	hr = commandList->Reset(commandAllocator, nullptr);
+
+	commandList->CopyResource(sbtDefaultBuff, sbtUploadBuff);
+
+	D3D12_RESOURCE_BARRIER barrier = {};
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+	barrier.Transition.pResource = sbtDefaultBuff;
+
+	commandList->ResourceBarrier(1, &barrier);
+
+	hr = commandList->Close();
+	ID3D12CommandList* ppCommandLists[] = { commandList };
+	commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+	
+	// Signal fence AFTER executing commands
+	hr = commandQueue->Signal(renderFramefence, renderFramefenceValue);
+	assert(SUCCEEDED(hr));
+
+	waitForGPURenderFrame();
+}
+
+void DXRTRenderer::prepareDispatchRaysDesc(const UINT sbtSize)
+{
+	raysDesc.RayGenerationShaderRecord.StartAddress = sbtDefaultBuff->GetGPUVirtualAddress();
+	raysDesc.RayGenerationShaderRecord.SizeInBytes = sbtSize;
+	raysDesc.Width = 800;
+	raysDesc.Height = 800;
+	raysDesc.Depth = 1;
+	raysDesc.MissShaderTable = {};
+	raysDesc.HitGroupTable = {};
+	raysDesc.CallableShaderTable = {};
 }
 
 void DXRTRenderer::stopRendering()
@@ -557,17 +1141,16 @@ void DXRTRenderer::renderFrame()
 	// Reset allocator & command list before recording
 	frameBegin();
 
-	commandList->SetPipelineState(state);
+	ID3D12DescriptorHeap* heaps[] = { uavHeap };
+	dxrCmdList->SetDescriptorHeaps(_countof(heaps), heaps);
 
-	commandList->SetGraphicsRootSignature(rootSignature);
+	dxrCmdList->SetComputeRootSignature(globalRootSignature);
 
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	commandList->IASetVertexBuffers(0, 1, &vbView);
+	dxrCmdList->SetComputeRootDescriptorTable(0, uavHeap->GetGPUDescriptorHandleForHeapStart());
 
-	commandList->RSSetViewports(1, &viewport);
-	commandList->RSSetScissorRects(1, &scissorRect);
+	dxrCmdList->SetPipelineState1(rtStateObject);
 
-	commandList->DrawInstanced(3, 1, 0, 0);
+	dxrCmdList->DispatchRays(&raysDesc);
 
 	frameEnd();
 }
