@@ -43,6 +43,7 @@ struct Vertex
 {
 	float x;
 	float y;
+	float z;
 };
 
 class DXRTRenderer
@@ -104,6 +105,8 @@ private:
 	// Use an upload heap to store the vertices on the CPU memory, the GPU will access them using the PCIe
 	void createVertexBuffer();
 
+	void createIndexBuffer();
+
 	void createRootSignature();
 
 	void createPipelineState();
@@ -120,6 +123,8 @@ private:
 
 	void frameEnd();
 
+	void createAccelerationStructure();
+
 	void createGlobalRootSignature();
 
 	void createRayTracingPipelineState();
@@ -132,16 +137,20 @@ private:
 							  const std::wstring& target);
 
 	D3D12_STATE_SUBOBJECT createRayGenSubObject();
+	D3D12_STATE_SUBOBJECT createClosestHitSubObject();
 	D3D12_STATE_SUBOBJECT createMissLibSubObject();
 	D3D12_STATE_SUBOBJECT createShaderConfigSubObject();
 	D3D12_STATE_SUBOBJECT createPipelineConfigSubObject();
 	D3D12_STATE_SUBOBJECT createGlobalRootSignatureSubObject();
+	D3D12_STATE_SUBOBJECT createHitGroupSubObject();
 
 	void createSBTUploadHeap(const UINT sbtSize);
 	void createSBTDefaultHeap(const UINT sbtSize);
-	void copySBTDataToUploadHeap(void* rayGenID);
+	void copySBTDataToUploadHeap(const UINT rayGenOffset, const UINT missOffset, const UINT hitGroupOffset,
+		void* rayGenID, void* missId, void* hitGroupID);
 	void copySBTDataToDefaultHeap();
-	void prepareDispatchRaysDesc(const UINT sbtSize);
+	void prepareDispatchRaysDesc(const UINT sbtSize, const UINT rayGenOffset,
+		const UINT missOffset, const UINT hitGroupOffset);
 
 private:
 	
@@ -170,9 +179,15 @@ private:
 	D3D12_DXIL_LIBRARY_DESC rayGenLib;
 	IDxcBlobPtr rayGenBlob;
 
+	D3D12_EXPORT_DESC closestHitExportDesc;
+	D3D12_DXIL_LIBRARY_DESC closestHitLib;
+	IDxcBlobPtr closestHitBlob;
+
 	D3D12_EXPORT_DESC missExportDesc;
 	D3D12_DXIL_LIBRARY_DESC missLib;
 	IDxcBlobPtr missBlob;
+
+	D3D12_HIT_GROUP_DESC hitGroupDesc;
 
 	D3D12_RAYTRACING_SHADER_CONFIG shaderConfig;
 	D3D12_RAYTRACING_PIPELINE_CONFIG pipelineConfig;
@@ -200,8 +215,9 @@ private:
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[FrameCount];
 	ID3D12DescriptorHeapPtr swapChainRTVHeap;
 
+	ID3D12ResourcePtr indexBuffer;
 	ID3D12ResourcePtr vertexBuffer;
-	ID3D12ResourcePtr vertexBufferUpload;// The vertices that we want to render
+	ID3D12ResourcePtr uploadVertexBuffer;// The vertices that we want to render
 	D3D12_VERTEX_BUFFER_VIEW vbView; // Vertex buffer descriptor
 	ID3D12RootSignaturePtr rootSignature;
 	ID3D12PipelineStatePtr state;
@@ -214,5 +230,23 @@ private:
 
 	float rendColor[4] = { 0.f, 1.f, 0.f, 1.f };
 	int frameIdx = 1;
+	Vertex vertices[3];
+
+	D3D12_RESOURCE_STATES raytracingOutputState = D3D12_RESOURCE_STATE_COMMON;
+	D3D12_RESOURCE_STATES backBufferState = D3D12_RESOURCE_STATE_PRESENT;
+
+	// Bottom-Level Acceleration Structure (BLAS)
+	ID3D12ResourcePtr blasBuffer;      // GPU buffer storing BLAS
+	ID3D12ResourcePtr blasScratch;     // Scratch buffer for building BLAS
+
+	// Top-Level Acceleration Structure (TLAS)
+	ID3D12ResourcePtr tlasBuffer;      // GPU buffer storing TLAS
+	ID3D12ResourcePtr tlasScratch;     // Scratch buffer for building TLAS
+	ID3D12ResourcePtr instanceBuffer;  // Instance description buffer
+
+	// GPU pointers
+	D3D12_GPU_VIRTUAL_ADDRESS blasBufferAddress;
+	D3D12_GPU_VIRTUAL_ADDRESS tlasBufferAddress;
+
 };
 
