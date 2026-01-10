@@ -6,6 +6,8 @@
 #pragma comment (lib, "d3d12.lib")
 #pragma comment (lib, "dxgi.lib")
 
+#pragma warning(disable : 4996)
+
 #include "DXRTRenderer.h"
 
 void printAdapters()

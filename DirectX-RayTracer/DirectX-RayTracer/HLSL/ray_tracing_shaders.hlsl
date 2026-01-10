@@ -9,11 +9,11 @@ struct RayPayload
 [shader("raygeneration")]
 void rayGen()
 {
-    float width = 800;
-    float height = 800;
+    float width = 1920;
+    float height = 1080;
 
     RayDesc cameraRay;
-    cameraRay.Origin = float3(0.f, 0.f, 0.f);
+    cameraRay.Origin = float3(0.f, 14.f, 26.f);
     
     uint2 pixelRasterCoords = DispatchRaysIndex().xy;
     

@@ -17,6 +17,8 @@
 #include <wrl.h>
 using Microsoft::WRL::ComPtr;
 
+#include "CRTMesh.h"
+
 DXRTRenderer::DXRTRenderer()
 {
 #ifdef _DEBUG
@@ -47,6 +49,8 @@ void DXRTRenderer::prepareForRendering(HWND hwnd)
 	createSwapChain(hwnd);
 	createDescriptorHeapForSwapChain();
 	createRenderTargetViewsFromSwapChain();
+
+	createScene();
 
 	createViewport();
 	createVertexBuffer();
@@ -209,7 +213,7 @@ void DXRTRenderer::createCommandsManagers()
 
 void DXRTRenderer::createGPUTexture()
 {
-	textureDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, 800, 600);
+	textureDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, 1920, 1080);
 	textureDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
 	D3D12_HEAP_PROPERTIES heapProps = {};
@@ -293,8 +297,8 @@ void DXRTRenderer::createFence()
 void DXRTRenderer::createSwapChain(HWND hwnd)
 {
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
-	swapChainDesc.Width = 800;
-	swapChainDesc.Height = 800;
+	swapChainDesc.Width = 1920;
+	swapChainDesc.Height = 1080;
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.BufferCount = 2;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -357,9 +361,13 @@ void DXRTRenderer::waitForGPURenderFrame()
 
 void DXRTRenderer::createVertexBuffer()
 {
-	UINT verticesCount = 3;
+	const CRTMesh& mesh = scene->getObjects()[1];
+	const std::vector<CRTVector>& vertices = mesh.getVertices();
+	
+	UINT verticesCount = vertices.size();
+
 	D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	D3D12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(verticesCount * sizeof(Vertex));
+	D3D12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(verticesCount * sizeof(CRTVector));
 
 	HRESULT hr = d3d12Device->CreateCommittedResource(
 		&heapProps,
@@ -371,15 +379,12 @@ void DXRTRenderer::createVertexBuffer()
 	);
 	assert(SUCCEEDED(hr));
 
-	vertices[0] = Vertex{ 0.0f, 1.75f, -3.f };
-	vertices[1] = Vertex{ 1.75f, -1.75f, -3.f };
-	vertices[2] = Vertex{ -1.75f, -1.75f, -3.f };
-
 	void* vertexData = nullptr;
 	hr = uploadVertexBuffer->Map(0, nullptr, &vertexData);
 	assert(SUCCEEDED(hr));
 
-	memcpy(vertexData, vertices, sizeof(vertices));
+	memcpy(vertexData, vertices.data(), verticesCount * sizeof(CRTVector));
+
 	uploadVertexBuffer->Unmap(0, nullptr);
 
 	heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -398,7 +403,7 @@ void DXRTRenderer::createVertexBuffer()
 	assert(SUCCEEDED(commandList->Reset(commandAllocator, nullptr)));
 
 	// Schedule copy from upload heap -> default heap
-	commandList->CopyBufferRegion(vertexBuffer, 0, uploadVertexBuffer, 0, verticesCount * sizeof(Vertex));
+	commandList->CopyBufferRegion(vertexBuffer, 0, uploadVertexBuffer, 0, verticesCount * sizeof(CRTVector));
 
 	// Transition default heap to VERTEX_AND_CONSTANT_BUFFER state
 	D3D12_RESOURCE_BARRIER barrier = {};
@@ -422,9 +427,11 @@ void DXRTRenderer::createVertexBuffer()
 }
 
 void DXRTRenderer::createIndexBuffer()
-{
-	uint32_t indices[] = { 0, 1, 2 };
-	const UINT indexBufferSize = sizeof(indices);
+{	
+	const CRTMesh& mesh = scene->getObjects()[1];
+	const std::vector<int>& indices = mesh.getIndices();
+
+	const UINT indexBufferSize = indices.size() * sizeof(int);
 
 	ID3D12Resource* uploadIndexBuffer = nullptr;
 
@@ -442,7 +449,7 @@ void DXRTRenderer::createIndexBuffer()
 
 	void* data;
 	uploadIndexBuffer->Map(0, nullptr, &data);
-	memcpy(data, indices, indexBufferSize);
+	memcpy(data, indices.data(), indexBufferSize);
 	uploadIndexBuffer->Unmap(0, nullptr);
 
 	D3D12_HEAP_PROPERTIES defaultHeapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -566,16 +573,21 @@ void DXRTRenderer::createViewport()
 	viewport = D3D12_VIEWPORT{};
 	viewport.TopLeftX = 0.0f;
 	viewport.TopLeftY = 0.0f;
-	viewport.Width = 800.f;
-	viewport.Height = 800.f;
+	viewport.Width = 1920.f;
+	viewport.Height = 1080.f;
 	viewport.MinDepth = 0.0f;
 	viewport.MaxDepth = 1.0f;
 
 	scissorRect = D3D12_RECT{};
 	scissorRect.left = 0;
 	scissorRect.top = 0;
-	scissorRect.right = 800;
-	scissorRect.bottom = 800;
+	scissorRect.right = 1920;
+	scissorRect.bottom = 1080;
+}
+
+void DXRTRenderer::createScene()
+{
+	scene = std::make_unique<CRTScene>("scene5_Lec9.crtscene");
 }
 
 void DXRTRenderer::recordExecuteAndReadback()
@@ -740,12 +752,12 @@ void DXRTRenderer::createAccelerationStructure()
 {
 	D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC trianglesDesc;
 	trianglesDesc.VertexBuffer.StartAddress = vertexBuffer->GetGPUVirtualAddress();
-	trianglesDesc.VertexBuffer.StrideInBytes = sizeof(Vertex);
-	trianglesDesc.VertexCount = 3;
+	trianglesDesc.VertexBuffer.StrideInBytes = sizeof(CRTVector);
+	trianglesDesc.VertexCount = scene->getObjects()[1].getVertices().size();
 	trianglesDesc.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
 
 	trianglesDesc.IndexBuffer = indexBuffer->GetGPUVirtualAddress();
-	trianglesDesc.IndexCount = 3;
+	trianglesDesc.IndexCount = scene->getObjects()[1].getIndices().size();
 	trianglesDesc.IndexFormat = DXGI_FORMAT_R32_UINT;
 
 	trianglesDesc.Transform3x4 = 0;
@@ -986,8 +998,8 @@ void DXRTRenderer::createRayTracingShaderTexture()
 {
 	D3D12_RESOURCE_DESC texDesc = {};
 	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-	texDesc.Width = 800;
-	texDesc.Height = 800;
+	texDesc.Width = 1920;
+	texDesc.Height = 1080;
 	texDesc.DepthOrArraySize = 1;
 	texDesc.MipLevels = 1;
 	texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -1391,8 +1403,8 @@ void DXRTRenderer::prepareDispatchRaysDesc(
 	raysDesc.HitGroupTable.StrideInBytes =
 		recordSize;
 
-	raysDesc.Width = 800;
-	raysDesc.Height = 800;
+	raysDesc.Width = 1920;
+	raysDesc.Height = 1080;
 	raysDesc.Depth = 1;
 	raysDesc.CallableShaderTable = {};
 }

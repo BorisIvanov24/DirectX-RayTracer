@@ -156,12 +156,40 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="CRTCamera.cpp" />
+    <ClCompile Include="CRTLight.cpp" />
+    <ClCompile Include="CRTMaterial.cpp" />
+    <ClCompile Include="CRTMatrix.cpp" />
+    <ClCompile Include="CRTMesh.cpp" />
+    <ClCompile Include="CRTScene.cpp" />
+    <ClCompile Include="CRTSceneParser.cpp" />
+    <ClCompile Include="CRTTexture.cpp" />
+    <ClCompile Include="CRTTextureAlbedo.cpp" />
+    <ClCompile Include="CRTTextureBitmap.cpp" />
+    <ClCompile Include="CRTTextureChecker.cpp" />
+    <ClCompile Include="CRTTextureEdges.cpp" />
+    <ClCompile Include="CRTTriangle.cpp" />
+    <ClCompile Include="CRTVector.cpp" />
     <ClCompile Include="DXRTRenderer.cpp" />
     <ClCompile Include="DXRTApp.cpp" />
     <ClCompile Include="DXRTMainWindow.cpp" />
     <ClCompile Include="DXRTViewportWidget.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CRTCamera.h" />
+    <ClInclude Include="CRTLight.h" />
+    <ClInclude Include="CRTMaterial.h" />
+    <ClInclude Include="CRTMatrix.h" />
+    <ClInclude Include="CRTMesh.h" />
+    <ClInclude Include="CRTScene.h" />
+    <ClInclude Include="CRTSceneParser.h" />
+    <ClInclude Include="CRTTexture.h" />
+    <ClInclude Include="CRTTextureAlbedo.h" />
+    <ClInclude Include="CRTTextureBitmap.h" />
+    <ClInclude Include="CRTTextureChecker.h" />
+    <ClInclude Include="CRTTextureEdges.h" />
+    <ClInclude Include="CRTTriangle.h" />
+    <ClInclude Include="CRTVector.h" />
     <ClInclude Include="DXRTRenderer.h" />
     <QtMoc Include="DXRTViewportWidget.h" />
     <QtMoc Include="DXRTMainWindow.h" />

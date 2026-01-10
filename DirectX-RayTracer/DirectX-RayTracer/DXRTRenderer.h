@@ -4,6 +4,9 @@
 #include <comdef.h>
 #include <QImage>
 #include <dxcapi.h>
+#include <memory>
+
+#include "CRTScene.h"
 
 #define CDXC_MAKE_SMART_COM_POINTER(_a) _COM_SMARTPTR_TYPEDEF(_a, __uuidof(_a))
 
@@ -112,6 +115,8 @@ private:
 	void createPipelineState();
 
 	void createViewport();
+
+	void createScene();
 
 	void recordExecuteAndReadback();
 
@@ -248,5 +253,6 @@ private:
 	D3D12_GPU_VIRTUAL_ADDRESS blasBufferAddress;
 	D3D12_GPU_VIRTUAL_ADDRESS tlasBufferAddress;
 
+	std::unique_ptr<CRTScene> scene;
 };
 
