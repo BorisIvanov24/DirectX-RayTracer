@@ -371,13 +371,15 @@ void DXRTRenderer::createVertexBuffer()
 	);
 	assert(SUCCEEDED(hr));
 
-	hr = uploadVertexBuffer->Map(0, nullptr, reinterpret_cast<void**>(&vertices));
-	assert(SUCCEEDED(hr));
-
 	vertices[0] = Vertex{ 0.0f, 1.75f, -3.f };
 	vertices[1] = Vertex{ 1.75f, -1.75f, -3.f };
 	vertices[2] = Vertex{ -1.75f, -1.75f, -3.f };
 
+	void* vertexData = nullptr;
+	hr = uploadVertexBuffer->Map(0, nullptr, &vertexData);
+	assert(SUCCEEDED(hr));
+
+	memcpy(vertexData, vertices, sizeof(vertices));
 	uploadVertexBuffer->Unmap(0, nullptr);
 
 	heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
