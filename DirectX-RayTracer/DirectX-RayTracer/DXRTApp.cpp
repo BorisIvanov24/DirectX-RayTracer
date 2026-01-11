@@ -39,6 +39,11 @@ void DXRTApp::rotateCamera(float yawDeg, float pitchDeg)
 	camera.rotate(yawDeg, pitchDeg);
 }
 
+void DXRTApp::zoomCamera(float amount)
+{
+	renderer.getScene().getCamera().zoom(amount);
+}
+
 float DXRTApp::getDeltaTime() const
 {
 	return deltaTime;

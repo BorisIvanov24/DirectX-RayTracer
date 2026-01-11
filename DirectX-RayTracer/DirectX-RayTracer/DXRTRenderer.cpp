@@ -589,8 +589,6 @@ void DXRTRenderer::createViewport()
 void DXRTRenderer::createScene()
 {
 	scene = std::make_unique<CRTScene>("scene5_Lec9.crtscene");
-	scene->getCamera().getPosition().print(std::cout);
-	scene->getCamera().getRotationMatrix().print();
 }
 
 void DXRTRenderer::updateCameraCB()

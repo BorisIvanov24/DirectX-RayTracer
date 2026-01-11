@@ -9,6 +9,7 @@ public:
 	void tilt(const float degrees);
 	void roll(const float degrees);
 
+	void zoom(float amount);
 	void rotate(float deltaYawDeg, float deltaPitchDeg);
 
 	void moveForward(float distance);

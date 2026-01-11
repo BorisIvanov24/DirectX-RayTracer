@@ -24,6 +24,7 @@ public:
 
 	void updateCameraMovement(const QSet<int>& keys, float deltaTime);
 	void rotateCamera(float yawDeg, float pitchDeg);
+	void zoomCamera(float amount);
 
 	float getDeltaTime() const;
 private:

@@ -23,6 +23,7 @@ protected:
     void keyReleaseEvent(QKeyEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
 
 private:
     QImage image;
@@ -33,4 +34,6 @@ private:
 
     bool mouseCaptured = false;
     bool ignoreNextMouseMove = false;
+
+    int mouseUses = 0;
 };

@@ -269,5 +269,11 @@ private:
 
 	std::unique_ptr<CRTScene> scene;
 	ID3D12ResourcePtr cameraCB;
+
+	std::vector<ID3D12ResourcePtr> vertexBuffers;
+	std::vector<ID3D12ResourcePtr> indexBuffers;
+
+	std::vector<ID3D12ResourcePtr> uploadVertexBuffers;
+	std::vector<ID3D12ResourcePtr> uploadIndexBuffers;
 };
 

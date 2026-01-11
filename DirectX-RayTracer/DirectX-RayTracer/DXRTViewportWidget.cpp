@@ -67,11 +67,17 @@ void DXRTViewportWidget::mouseMoveEvent(QMouseEvent* event)
 			ignoreNextMouseMove = false;
 			return;
 		}
-		app->rotateCamera(yawDegrees, -pitchDegrees);
-
+		app->rotateCamera(-yawDegrees, -pitchDegrees);
 		ignoreNextMouseMove = true;
 		QCursor::setPos(mapToGlobal(center));
 	}
+}
+
+void DXRTViewportWidget::wheelEvent(QWheelEvent* event)
+{
+	const float zoomSpeed = 0.8f; // adjust as needed
+	float delta = event->angleDelta().y() / 120.0f; // one notch = 120
+	app->zoomCamera(-delta * zoomSpeed);
 }
 
 void DXRTViewportWidget::updateImage(const QImage& image)

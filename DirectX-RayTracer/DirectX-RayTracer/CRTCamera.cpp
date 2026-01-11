@@ -4,6 +4,7 @@
 #include <cmath>
 #include "CRTLight.h"
 #include <algorithm>
+#include <iostream>
 
 void CRTCamera::pan(const float degrees)
 {
@@ -41,6 +42,18 @@ void CRTCamera::roll(const float degrees)
 	rotationMatrix = rotationMatrix * rotateAroundZ;
 }
 
+void CRTCamera::zoom(float amount)
+{
+	// Forward = column 2 of rotationMatrix
+	CRTVector forward(
+		rotationMatrix.get(0, 2),
+		rotationMatrix.get(1, 2),
+		rotationMatrix.get(2, 2)
+	);
+
+	position = position + forward * amount;
+}
+
 void CRTCamera::rotate(float deltaYawDeg, float deltaPitchDeg)
 {
 	const float DEG2RAD = 3.14159265359f / 180.0f;
@@ -55,7 +68,7 @@ void CRTCamera::rotate(float deltaYawDeg, float deltaPitchDeg)
 	// Forward vector in world space
 	float fx = cos(pitch) * sin(yaw);
 	float fy = sin(pitch);
-	float fz = -cos(pitch) * cos(yaw); // forward = -Z in camera space
+	float fz = cos(pitch) * cos(yaw); // forward = -Z in camera space
 	CRTVector forward(fx, fy, fz);
 	forward.normalise();
 
