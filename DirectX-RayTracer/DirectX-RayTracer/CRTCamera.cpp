@@ -3,6 +3,7 @@
 #include "CRTCamera.h"
 #include <cmath>
 #include "CRTLight.h"
+#include <algorithm>
 
 void CRTCamera::pan(const float degrees)
 {
@@ -38,6 +39,62 @@ void CRTCamera::roll(const float degrees)
 	);
 
 	rotationMatrix = rotationMatrix * rotateAroundZ;
+}
+
+void CRTCamera::rotate(float deltaYawDeg, float deltaPitchDeg)
+{
+	const float DEG2RAD = 3.14159265359f / 180.0f;
+	yaw += deltaYawDeg * DEG2RAD;
+	pitch += deltaPitchDeg * DEG2RAD;
+
+	// Clamp pitch to avoid flipping over
+	const float maxPitch = 89.f * DEG2RAD;
+	const float minPitch = -89.f * DEG2RAD;
+	pitch = std::clamp(pitch, minPitch, maxPitch);
+
+	// Forward vector in world space
+	float fx = cos(pitch) * sin(yaw);
+	float fy = sin(pitch);
+	float fz = -cos(pitch) * cos(yaw); // forward = -Z in camera space
+	CRTVector forward(fx, fy, fz);
+	forward.normalise();
+
+	// Right and up vectors
+	CRTVector worldUp(0.f, 1.f, 0.f);
+	CRTVector right = cross(worldUp, forward);
+	right.normalise();
+	CRTVector up = cross(forward, right);
+
+	// Build rotationMatrix columns = right, up, forward
+	rotationMatrix = CRTMatrix(
+		right.getX(), up.getX(), forward.getX(),
+		right.getY(), up.getY(), forward.getY(),
+		right.getZ(), up.getZ(), forward.getZ()
+	);
+}
+
+void CRTCamera::moveForward(float distance)
+{
+	// Forward = column 2 of rotationMatrix
+	CRTVector forward(
+		rotationMatrix.get(0, 2),
+		rotationMatrix.get(1, 2),
+		rotationMatrix.get(2, 2)
+	);
+
+	position = position + forward * distance;
+}
+
+void CRTCamera::moveRight(float distance)
+{
+	// Right = column 0 of rotationMatrix
+	CRTVector right(
+		rotationMatrix.get(0, 0),
+		rotationMatrix.get(1, 0),
+		rotationMatrix.get(2, 0)
+	);
+
+	position = position + right * distance;
 }
 
 void CRTCamera::panAroundTarget(const float degrees, const CRTVector& target)

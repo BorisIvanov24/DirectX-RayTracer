@@ -24,6 +24,7 @@ public:
 
 	HWND getNativeWindowHandle();
 
+	DXRTViewportWidget* getViewport();
 private:
 	// Create UI elements outside the viewport widget
 	void createMenusAndToolbars();

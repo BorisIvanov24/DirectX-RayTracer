@@ -1,6 +1,13 @@
 RaytracingAccelerationStructure sceneBVHAccStruct : register(t0);
 RWTexture2D<float4> frameTexture : register(u0);
 
+cbuffer CameraCB : register(b0)
+{
+    float3 cameraPosition;
+    float _pad0;
+    row_major float4x4 cameraRotation;
+};
+
 struct RayPayload
 {
     float4 pixelColor;
@@ -31,9 +38,11 @@ void rayGen()
     
     x *= width / height;
     
-    float3 rayDirection = float3(x, y, -1.f);
-    float3 rayDirectionNormalize = normalize(rayDirection);
-    cameraRay.Direction = rayDirectionNormalize;
+    float3 rayDirCamera = normalize(float3(x, y, -1.0f));
+    float3 rayDirWorld = normalize(mul(cameraRotation, rayDirCamera));
+    
+    cameraRay.Origin = cameraPosition;
+    cameraRay.Direction = rayDirWorld;
     cameraRay.TMin = 0.001;
     cameraRay.TMax = 10000.0;
     
@@ -52,6 +61,7 @@ void rayGen()
     );
 
     frameTexture[pixelRasterCoords] = rayPayload.pixelColor;
+
 }
 
 [shader("miss")]
@@ -63,5 +73,11 @@ void miss(inout RayPayload payload)
 [shader("closesthit")]
 void closestHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
-    payload.pixelColor = float4(1.0, 0.0, 0.0, 1.0);
+    uint tri = PrimitiveIndex();
+
+    float r = frac(sin(tri * 12.9898) * 43758.5453);
+    float g = frac(sin(tri * 78.233) * 43758.5453);
+    float b = frac(sin(tri * 45.164) * 43758.5453);
+
+    payload.pixelColor = float4(r, g, b, 1.0);
 }

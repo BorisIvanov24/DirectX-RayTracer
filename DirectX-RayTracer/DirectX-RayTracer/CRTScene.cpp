@@ -24,6 +24,11 @@ const CRTCamera& CRTScene::getCamera() const
 	return camera;
 }
 
+CRTCamera& CRTScene::getCamera()
+{
+	return camera;
+}
+
 const std::vector<CRTMesh>& CRTScene::getObjects() const
 {
 	return geometryObjects;

@@ -14,7 +14,7 @@ DXRTMainWindow::DXRTMainWindow(DXRTApp* app, QWidget* parent) : QMainWindow(pare
     mainLayout->setSpacing(0);
 
     // --- Viewport ---
-    viewport = new DXRTViewportWidget(central);
+    viewport = new DXRTViewportWidget(app, central);
     viewport->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     mainLayout->addWidget(viewport, /*stretch*/ 1);
 
@@ -40,6 +40,11 @@ DXRTMainWindow::DXRTMainWindow(DXRTApp* app, QWidget* parent) : QMainWindow(pare
 HWND DXRTMainWindow::getNativeWindowHandle()
 {
    return viewport->getNativeWindowHandle();
+}
+
+DXRTViewportWidget* DXRTMainWindow::getViewport()
+{
+    return viewport;
 }
 
 void DXRTMainWindow::setFPS(const int fps)

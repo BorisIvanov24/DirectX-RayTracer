@@ -51,6 +51,7 @@ void DXRTRenderer::prepareForRendering(HWND hwnd)
 	createRenderTargetViewsFromSwapChain();
 
 	createScene();
+	createCameraBuffer();
 
 	createViewport();
 	createVertexBuffer();
@@ -588,6 +589,32 @@ void DXRTRenderer::createViewport()
 void DXRTRenderer::createScene()
 {
 	scene = std::make_unique<CRTScene>("scene5_Lec9.crtscene");
+	scene->getCamera().getPosition().print(std::cout);
+	scene->getCamera().getRotationMatrix().print();
+}
+
+void DXRTRenderer::updateCameraCB()
+{
+	CameraCB cbData = {};
+
+	cbData.cameraPosition.x = scene->getCamera().getPosition().getX();
+	cbData.cameraPosition.y = scene->getCamera().getPosition().getY();
+	cbData.cameraPosition.z = scene->getCamera().getPosition().getZ();
+	cbData.pad0 = 0.0f;
+
+	const CRTMatrix& r = scene->getCamera().getRotationMatrix();
+
+	cbData.cameraRotation = DirectX::XMFLOAT4X4(
+		r.get(0, 0), r.get(0, 1), r.get(0, 2), 0.0f,
+		r.get(1, 0), r.get(1, 1), r.get(1, 2), 0.0f,
+		r.get(2, 0), r.get(2, 1), r.get(2, 2), 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	);
+
+	void* mapped = nullptr;
+	cameraCB->Map(0, nullptr, &mapped);
+	memcpy(mapped, &cbData, sizeof(CameraCB));
+	cameraCB->Unmap(0, nullptr);
 }
 
 void DXRTRenderer::recordExecuteAndReadback()
@@ -683,6 +710,8 @@ void DXRTRenderer::rotateTriangleVertices()
 
 void DXRTRenderer::frameBegin()
 {
+	updateCameraCB();
+
 	assert(SUCCEEDED(commandAllocator->Reset()));
 	assert(SUCCEEDED(dxrCmdList->Reset(commandAllocator, nullptr)));
 
@@ -747,6 +776,23 @@ void DXRTRenderer::frameEnd()
 	swapChainFrameIdx = swapChain->GetCurrentBackBufferIndex();
 }
 
+void DXRTRenderer::createCameraBuffer()
+{
+	D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(
+		(sizeof(CameraCB) + 255) & ~255
+	);
+
+	HRESULT hr = d3d12Device->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&desc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&cameraCB)
+	);
+	assert(SUCCEEDED(hr));
+}
 
 void DXRTRenderer::createAccelerationStructure()
 {
@@ -897,27 +943,37 @@ void DXRTRenderer::createGlobalRootSignature()
 {
 	D3D12_DESCRIPTOR_RANGE ranges[2] = {};
 
+	// t0 : RaytracingAccelerationStructure
 	ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	ranges[0].NumDescriptors = 1;
 	ranges[0].BaseShaderRegister = 0;
 	ranges[0].RegisterSpace = 0;
 	ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
+	// u0 : RWTexture2D
 	ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 	ranges[1].NumDescriptors = 1;
 	ranges[1].BaseShaderRegister = 0;
 	ranges[1].RegisterSpace = 0;
 	ranges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-	D3D12_ROOT_PARAMETER rootParam = {};
-	rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	rootParam.DescriptorTable.NumDescriptorRanges = 2;
-	rootParam.DescriptorTable.pDescriptorRanges = ranges;
+	D3D12_ROOT_PARAMETER rootParams[2] = {};
+
+	// Root parameter 0: descriptor table (SRV + UAV)
+	rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	rootParams[0].DescriptorTable.NumDescriptorRanges = 2;
+	rootParams[0].DescriptorTable.pDescriptorRanges = ranges;
+
+	// Root parameter 1: CBV b0 (Camera)
+	rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	rootParams[1].Descriptor.ShaderRegister = 0;
+	rootParams[1].Descriptor.RegisterSpace = 0;
 
 	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
-	rootSigDesc.NumParameters = 1;
-	rootSigDesc.pParameters = &rootParam;
+	rootSigDesc.NumParameters = 2;
+	rootSigDesc.pParameters = rootParams;
 	rootSigDesc.NumStaticSamplers = 0;
 	rootSigDesc.pStaticSamplers = nullptr;
 	rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
@@ -926,7 +982,11 @@ void DXRTRenderer::createGlobalRootSignature()
 	ID3DBlobPtr errorBlob;
 
 	HRESULT hr = D3D12SerializeRootSignature(
-		&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1, &sigBlob, &errorBlob);
+		&rootSigDesc,
+		D3D_ROOT_SIGNATURE_VERSION_1,
+		&sigBlob,
+		&errorBlob
+	);
 	assert(SUCCEEDED(hr));
 
 	hr = d3d12Device->CreateRootSignature(
@@ -937,6 +997,7 @@ void DXRTRenderer::createGlobalRootSignature()
 	);
 	assert(SUCCEEDED(hr));
 }
+
 
 void DXRTRenderer::createRayTracingPipelineState()
 {
@@ -1414,6 +1475,11 @@ void DXRTRenderer::stopRendering()
 	//waitForGPURenderFrame(); Bug arises
 }
 
+CRTScene& DXRTRenderer::getScene()
+{
+	return *scene;
+}
+
 void DXRTRenderer::renderFrame()
 {
 	frameBegin();
@@ -1422,6 +1488,7 @@ void DXRTRenderer::renderFrame()
 	dxrCmdList->SetDescriptorHeaps(_countof(heaps), heaps);
 	dxrCmdList->SetComputeRootSignature(globalRootSignature);
 	dxrCmdList->SetComputeRootDescriptorTable(0, uavHeap->GetGPUDescriptorHandleForHeapStart());
+	dxrCmdList->SetComputeRootConstantBufferView(1, cameraCB->GetGPUVirtualAddress());
 	dxrCmdList->SetPipelineState1(rtStateObject);
 	FLOAT clearColor[4] = { 0.f, 0.f, 1.f, 1.f };
 

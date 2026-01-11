@@ -3,6 +3,7 @@
 #include <QObject>
 #include "DXRTMainWindow.h"
 #include <QTimer>
+#include <QElapsedTimer>
 
 class DXRTApp : public QObject
 {
@@ -19,6 +20,12 @@ public slots:
 	// Close the editor properly, wait for the current GPU tasks
 	void onQuit();
 
+public:
+
+	void updateCameraMovement(const QSet<int>& keys, float deltaTime);
+	void rotateCamera(float yawDeg, float pitchDeg);
+
+	float getDeltaTime() const;
 private:
 	// Create the main window for the editor
 	bool initWindow();
@@ -35,5 +42,8 @@ private:
 	QTimer* idleTimer = nullptr; // The timer for implementing the rendering loop 
 	QTimer* fpsTimer = nullptr; // The timer to track the FPS value
 	int frameIdxAtLastFPSCalc = 0;
+
+	QElapsedTimer frameTimer; // tracks time between frames
+	float deltaTime = 0.f;
 };
 

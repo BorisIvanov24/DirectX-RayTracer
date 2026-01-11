@@ -20,6 +20,8 @@ bool DXRTApp::init()
 	connect(fpsTimer, &QTimer::timeout, this, &DXRTApp::updateRenderStats);
 	fpsTimer->start(1'000);
 
+	frameTimer.start();
+
 	return true;
 }
 
@@ -28,6 +30,18 @@ void DXRTApp::onQuit()
 	idleTimer->stop();
 	fpsTimer->stop();
 	renderer.stopRendering();
+}
+
+void DXRTApp::rotateCamera(float yawDeg, float pitchDeg)
+{
+	auto& camera = renderer.getScene().getCamera();
+
+	camera.rotate(yawDeg, pitchDeg);
+}
+
+float DXRTApp::getDeltaTime() const
+{
+	return deltaTime;
 }
 
 bool DXRTApp::initWindow()
@@ -55,7 +69,33 @@ void DXRTApp::updateRenderStats()
 	mainWnd->setFPS(fps);
 }
 
+void DXRTApp::updateCameraMovement(const QSet<int>& keys, float dt)
+{
+	auto& cam = renderer.getScene().getCamera();
+	float speed = 10.0f;
+
+	if (keys.contains(Qt::Key_W))
+		cam.moveForward(-speed * dt);
+
+	if (keys.contains(Qt::Key_S))
+		cam.moveForward(speed * dt);
+
+	if (keys.contains(Qt::Key_A))
+		cam.moveRight(-speed * dt);
+
+	if (keys.contains(Qt::Key_D))
+		cam.moveRight(speed * dt);
+}
+
 void DXRTApp::onIdleTick()
 {
+	// Compute deltaTime in seconds
+	deltaTime = frameTimer.elapsed() / 1000.f; // milliseconds -> seconds
+	frameTimer.restart();
+
+	const QSet<int>& keys = mainWnd->getViewport()->getPressedKeys();
+
+	updateCameraMovement(keys, deltaTime);
+
 	renderFrame();
 }

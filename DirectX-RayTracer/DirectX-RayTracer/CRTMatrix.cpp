@@ -69,3 +69,8 @@ void CRTMatrix::print() const
         std::cout << std::endl;
     }
 }
+
+float CRTMatrix::get(int row, int col) const
+{
+    return m[row][col];
+}

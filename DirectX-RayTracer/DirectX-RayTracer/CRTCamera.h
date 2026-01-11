@@ -9,6 +9,11 @@ public:
 	void tilt(const float degrees);
 	void roll(const float degrees);
 
+	void rotate(float deltaYawDeg, float deltaPitchDeg);
+
+	void moveForward(float distance);
+	void moveRight(float distance);
+
 	void panAroundTarget(const float degrees, const CRTVector& target);
 
 	const CRTVector& getPosition() const;
@@ -20,5 +25,8 @@ private:
 	CRTMatrix rotationMatrix;
 
 	CRTVector position;
+
+	float yaw = 0.f;    // rotation around world Y
+	float pitch = 0.f;
 };
 

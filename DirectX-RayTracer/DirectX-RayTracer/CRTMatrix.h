@@ -14,6 +14,9 @@ public:
 	friend CRTVector operator*(const CRTVector& lhs, const CRTMatrix& rhs);
 
 	void print() const;
+
+	float get(int row, int col) const;
+
 private:
 	float m[3][3];
 };

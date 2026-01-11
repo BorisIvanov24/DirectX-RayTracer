@@ -6,6 +6,8 @@
 #include <dxcapi.h>
 #include <memory>
 
+#include <DirectXMath.h>
+
 #include "CRTScene.h"
 
 #define CDXC_MAKE_SMART_COM_POINTER(_a) _COM_SMARTPTR_TYPEDEF(_a, __uuidof(_a))
@@ -49,6 +51,13 @@ struct Vertex
 	float z;
 };
 
+struct CameraCB
+{
+	DirectX::XMFLOAT3 cameraPosition;
+	float pad0;
+	DirectX::XMFLOAT4X4 cameraRotation;
+};
+
 class DXRTRenderer
 {
 public:
@@ -71,6 +80,7 @@ public:
 
 	void stopRendering();
 
+	CRTScene& getScene();
 private:
 	// Create ID3D12Device, an interface which allows access to the GPU for the purpose of Direct3D API
 	void createDevice();
@@ -118,6 +128,8 @@ private:
 
 	void createScene();
 
+	void updateCameraCB();
+
 	void recordExecuteAndReadback();
 
 	void writeImageToFile();
@@ -127,6 +139,8 @@ private:
 	void frameBegin();
 
 	void frameEnd();
+
+	void createCameraBuffer();
 
 	void createAccelerationStructure();
 
@@ -254,5 +268,6 @@ private:
 	D3D12_GPU_VIRTUAL_ADDRESS tlasBufferAddress;
 
 	std::unique_ptr<CRTScene> scene;
+	ID3D12ResourcePtr cameraCB;
 };
 

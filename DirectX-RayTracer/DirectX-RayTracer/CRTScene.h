@@ -23,6 +23,7 @@ public:
 	void parseSceneFile(const std::string& sceneFileName);
 	const CRTSettings& getSettings() const;
 	const CRTCamera& getCamera() const;
+	CRTCamera& getCamera();
 	const std::vector<CRTMesh>& getObjects() const;
 	const std::vector<CRTLight>& getLights() const;
 	const std::vector<CRTMaterial>& getMaterials() const;
