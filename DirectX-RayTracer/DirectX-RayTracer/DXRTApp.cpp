@@ -60,7 +60,6 @@ bool DXRTApp::initWindow()
 void DXRTApp::renderFrame()
 {
 	renderer.renderFrame();
-	//mainWnd->updateViewport(renderer.getQImageForFrame());
 	frameIdxAtLastFPSCalc++;
 }
 

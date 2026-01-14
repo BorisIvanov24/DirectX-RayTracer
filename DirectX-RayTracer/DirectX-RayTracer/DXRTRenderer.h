@@ -69,14 +69,10 @@ public:
 
 	void renderFrame();
 
-	void renderFrameWithSwapChain();
-
 	// Create the necessary DirectX infrastructure and rendering resources
 	void prepareForRendering(HWND hwnd);
 
 	void prepareForRayTracing();
-
-	QImage getQImageForFrame();
 
 	void stopRendering();
 
@@ -87,20 +83,6 @@ private:
 
 	// Create ID3D12CommandQueue, ID3D12CommandAllocator and ID3D12GraphicsCommandList, for preparing and passing GPU commands
 	void createCommandsManagers();
-
-	// Describe the 2D buffer, which will be used for the texture, and create its heap
-	void createGPUTexture();
-
-	// Create a descriptor for the render target, with which the texture could be accessed for the next pipeline stages
-	// Create a descriptor heap for the descriptor
-	void createRenderTargetView();
-
-	// Add commands in the command list for generating a texture with constant color
-	void generateConstColorTexture();
-
-	// Create a read-back heap and a read-back buffer, based on the texture for rendering
-	// Store the memory layout information for the texture
-	void createReadbackBuffer();
 
 	// Create fence, which will be used to synchronize the CPU and GPU after frame rendering
 	void createFence();
@@ -120,21 +102,9 @@ private:
 
 	void createIndexBuffer();
 
-	void createRootSignature();
-
-	void createPipelineState();
-
-	void createViewport();
-
 	void createScene();
 
 	void updateCameraCB();
-
-	void recordExecuteAndReadback();
-
-	void writeImageToFile();
-
-	void rotateTriangleVertices();
 
 	void frameBegin();
 
@@ -181,14 +151,6 @@ private:
 	ID3D12CommandQueuePtr commandQueue; // Holds the command lists and will be given to the GPU for execution
 	ID3D12CommandAllocatorPtr commandAllocator; // Manages the GPU memory for the commands
 	ID3D12GraphicsCommandListPtr commandList; // The actual commands that will be executet by the GPU
-
-	D3D12_RESOURCE_DESC textureDesc; // Holds the texture properties
-	ID3D12ResourcePtr renderTarget; // The render target used for the texture in which the GPU will write colors
-	ID3D12DescriptorHeapPtr rtvHeap; // The heap which holds the render target descriptor of the texture
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle; // Handle for the descriptor of the texture, with which it could be used in the pipeline
-
-	ID3D12ResourcePtr readbackBuffer; // The buffer which will hold the rendered image
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT renderTargetFootprint; // Memory layout information for the texture
 
 	ID3D12ResourcePtr raytracingOutput;
 	ID3D12DescriptorHeapPtr uavHeap;
@@ -240,16 +202,6 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW vbView; // Vertex buffer descriptor
 	ID3D12RootSignaturePtr rootSignature;
 	ID3D12PipelineStatePtr state;
-
-	D3D12_ROOT_CONSTANTS constant;
-	D3D12_ROOT_PARAMETER param;
-
-	D3D12_VIEWPORT viewport;
-	D3D12_RECT scissorRect;
-
-	float rendColor[4] = { 0.f, 1.f, 0.f, 1.f };
-	int frameIdx = 1;
-	Vertex vertices[3];
 
 	D3D12_RESOURCE_STATES raytracingOutputState = D3D12_RESOURCE_STATE_COMMON;
 	D3D12_RESOURCE_STATES backBufferState = D3D12_RESOURCE_STATE_PRESENT;

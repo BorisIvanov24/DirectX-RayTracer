@@ -53,7 +53,6 @@ void DXRTRenderer::prepareForRendering(HWND hwnd)
 	createScene();
 	createCameraBuffer();
 
-	createViewport();
 	createVertexBuffer();
 	createIndexBuffer();
 	createAccelerationStructure();
@@ -67,34 +66,6 @@ void DXRTRenderer::prepareForRayTracing()
 	createRayTracingPipelineState();
 	createRayTracingShaderTexture();
 	createShaderBindingTable();
-}
-
-QImage DXRTRenderer::getQImageForFrame()
-{
-	void* renderTargetData = nullptr;
-	HRESULT hr = readbackBuffer->Map(0, nullptr, &renderTargetData);
-	assert(SUCCEEDED(hr));
-
-	// Create a QImage with the same dimensions
-	QImage image(textureDesc.Width, textureDesc.Height, QImage::Format_RGBA8888);
-
-	// Copy data row by row, because GPU row pitch may be larger than width * 4
-	for (UINT row = 0; row < textureDesc.Height; row++)
-	{
-		UINT rowPitch = renderTargetFootprint.Footprint.RowPitch;
-		uint8_t* srcRow = reinterpret_cast<uint8_t*>(renderTargetData) + row * rowPitch;
-		uint8_t* dstRow = image.scanLine(row);
-
-		// Copy only width * 4 bytes (RGBA) per row
-		memcpy(dstRow, srcRow, textureDesc.Width * RGBA_COLOR_CHANNELS_COUNT);
-	}
-
-	readbackBuffer->Unmap(0, nullptr);
-
-	// Optional: if you need RGB only, convert:
-	// image = image.convertToFormat(QImage::Format_RGB888);
-
-	return image;
 }
 
 void DXRTRenderer::createDevice()
@@ -147,26 +118,6 @@ void DXRTRenderer::createDevice()
 	adapter = bestAdapter; // store the chosen adapter
 }
 
-
-//void DXRTRenderer::createDevice()
-//{
-//	HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory));
-//	assert(SUCCEEDED(hr));
-//
-//	for (UINT adapterIndex = 0; dxgiFactory->EnumAdapters1(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND; adapterIndex++)
-//	{
-//		DXGI_ADAPTER_DESC1 desc;
-//		adapter->GetDesc1(&desc);
-//
-//		if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d3d12Device))))
-//		{
-//			std::wcout << "Using GPU: " << desc.Description << "\n";
-//			break;
-//		}
-//	}
-//	assert(adapter);
-//}
-
 void DXRTRenderer::createCommandsManagers()
 {
 	const D3D12_COMMAND_LIST_TYPE commandsType = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -210,78 +161,6 @@ void DXRTRenderer::createCommandsManagers()
 		// Option 3: mark DXR disabled and continue with raster path
 		// dxrSupported = false;
 	}
-}
-
-void DXRTRenderer::createGPUTexture()
-{
-	textureDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, 1920, 1080);
-	textureDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-
-	D3D12_HEAP_PROPERTIES heapProps = {};
-	heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
-	const HRESULT hr = d3d12Device->CreateCommittedResource(
-		&heapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&textureDesc,
-		D3D12_RESOURCE_STATE_RENDER_TARGET,
-		nullptr,
-		IID_PPV_ARGS(&renderTarget)
-	);
-
-	assert(SUCCEEDED(hr));
-}
-
-void DXRTRenderer::createRenderTargetView()
-{
-	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-	rtvHeapDesc.NumDescriptors = 1;
-	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-
-	assert(SUCCEEDED(d3d12Device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap))));
-
-	rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
-	d3d12Device->CreateRenderTargetView(renderTarget, nullptr, rtvHandle);
-}
-
-void DXRTRenderer::generateConstColorTexture()
-{
-	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
-
-	//FLOAT clearColor[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
-	commandList->ClearRenderTargetView(rtvHandle, rendColor, 0, nullptr);
-}
-
-void DXRTRenderer::createReadbackBuffer()
-{
-	UINT64 readbackBufferSize = 0;
-
-	d3d12Device->GetCopyableFootprints(
-		&textureDesc, 0, 1, 0, &renderTargetFootprint,
-		nullptr, nullptr, &readbackBufferSize
-	);
-
-	D3D12_HEAP_PROPERTIES readbackHeapProps = { D3D12_HEAP_TYPE_READBACK };
-	D3D12_RESOURCE_DESC readbackDesc = {};
-	readbackDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	readbackDesc.Width = readbackBufferSize;
-	readbackDesc.Height = 1;
-	readbackDesc.DepthOrArraySize = 1;
-	readbackDesc.MipLevels = 1;
-	readbackDesc.SampleDesc.Count = 1;
-	readbackDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-	HRESULT hr = d3d12Device->CreateCommittedResource(
-		&readbackHeapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&readbackDesc,
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&readbackBuffer)
-	);
-
-	assert(SUCCEEDED(hr));
 }
 
 void DXRTRenderer::createFence()
@@ -494,98 +373,6 @@ void DXRTRenderer::createIndexBuffer()
 	uploadIndexBuffer->Release();
 }
 
-
-
-
-void DXRTRenderer::createRootSignature()
-{
-	constant.ShaderRegister = 0;
-	constant.RegisterSpace = 0;
-	constant.Num32BitValues = 1;
-	
-	D3D12_DESCRIPTOR_RANGE ranges[2];
-	ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-	ranges[0].NumDescriptors = 1;
-	ranges[0].BaseShaderRegister = 0;
-	ranges[0].RegisterSpace = 0;
-
-	ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	ranges[1].NumDescriptors = 1;
-	ranges[1].BaseShaderRegister = 0;
-	ranges[1].RegisterSpace = 0;
-
-	param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	param.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	param.DescriptorTable.NumDescriptorRanges = 2;
-	param.Constants = constant;
-	param.DescriptorTable.pDescriptorRanges = ranges;
-
-	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
-	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-	rootSignatureDesc.NumParameters = 1;
-	rootSignatureDesc.pParameters = &param;
-
-	ID3DBlobPtr signature;
-	ID3DBlobPtr error;
-	D3D12SerializeRootSignature(
-		&rootSignatureDesc,
-		D3D_ROOT_SIGNATURE_VERSION_1,
-		&signature,
-		&error
-	);
-
-	HRESULT hr = d3d12Device->CreateRootSignature(
-		0,
-		signature->GetBufferPointer(),
-		signature->GetBufferSize(),
-		IID_PPV_ARGS(&rootSignature)
-	);
-	assert(SUCCEEDED(hr));
-}
-
-void DXRTRenderer::createPipelineState()
-{
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-
-	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-		{"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
-	};
-
-	psoDesc.pRootSignature = rootSignature;
-	psoDesc.PS = { g_const_color, _countof(g_const_color) };
-	psoDesc.VS = { g_const_color_vs, _countof(g_const_color_vs) };
-	psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
-	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	psoDesc.DepthStencilState.DepthEnable = FALSE;
-	psoDesc.DepthStencilState.StencilEnable = FALSE;
-	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	psoDesc.SampleDesc.Count = 1;
-	psoDesc.SampleDesc.Quality = 0;
-
-	HRESULT hr = d3d12Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&state));
-}
-
-void DXRTRenderer::createViewport()
-{
-	viewport = D3D12_VIEWPORT{};
-	viewport.TopLeftX = 0.0f;
-	viewport.TopLeftY = 0.0f;
-	viewport.Width = 1920.f;
-	viewport.Height = 1080.f;
-	viewport.MinDepth = 0.0f;
-	viewport.MaxDepth = 1.0f;
-
-	scissorRect = D3D12_RECT{};
-	scissorRect.left = 0;
-	scissorRect.top = 0;
-	scissorRect.right = 1920;
-	scissorRect.bottom = 1080;
-}
-
 void DXRTRenderer::createScene()
 {
 	scene = std::make_unique<CRTScene>("scene5_Lec9.crtscene");
@@ -613,97 +400,6 @@ void DXRTRenderer::updateCameraCB()
 	cameraCB->Map(0, nullptr, &mapped);
 	memcpy(mapped, &cbData, sizeof(CameraCB));
 	cameraCB->Unmap(0, nullptr);
-}
-
-void DXRTRenderer::recordExecuteAndReadback()
-{
-	// Transition render target to COPY_SOURCE
-	D3D12_RESOURCE_BARRIER barrier = {};
-	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Transition.pResource = renderTarget;
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	commandList->ResourceBarrier(1, &barrier);
-
-	// Copy to readback buffer
-	D3D12_TEXTURE_COPY_LOCATION dest = {};
-	dest.pResource = readbackBuffer;
-	dest.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-	dest.PlacedFootprint = renderTargetFootprint;
-
-	D3D12_TEXTURE_COPY_LOCATION src = {};
-	src.pResource = renderTarget;
-	src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-	src.SubresourceIndex = 0;
-
-	commandList->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
-
-	// Transition back to RENDER_TARGET (optional)
-	std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
-	commandList->ResourceBarrier(1, &barrier);
-
-	// Close command list after recording everything
-	HRESULT hr = commandList->Close();
-	assert(SUCCEEDED(hr));
-
-	// Execute on GPU
-	ID3D12CommandList* lists[] = { commandList };
-	commandQueue->ExecuteCommandLists(1, lists);
-
-	// Signal fence
-	hr = commandQueue->Signal(renderFramefence, renderFramefenceValue);
-	assert(SUCCEEDED(hr));
-}
-
-
-void DXRTRenderer::writeImageToFile()
-{
-	void* renderTargetData;
-	HRESULT hr = readbackBuffer->Map(0, nullptr, &renderTargetData);
-	assert(SUCCEEDED(hr));
-
-	std::string filename("output.ppm");
-	std::ofstream file(filename, std::ios::out | std::ios::binary);
-	assert(file);
-
-	file << "P3\n" << textureDesc.Width <<' '<< textureDesc.Height << "\n255\n";
-
-	for (UINT rowIdx = 0; rowIdx < textureDesc.Height; rowIdx++)
-	{
-		UINT rowPitch = renderTargetFootprint.Footprint.RowPitch;
-		uint8_t* rowData = reinterpret_cast<uint8_t*>(renderTargetData) + rowIdx * rowPitch;
-		for (UINT64 colIdx = 0; colIdx < textureDesc.Width; colIdx++)
-		{
-			uint8_t* pixelData = rowData + colIdx * RGBA_COLOR_CHANNELS_COUNT;
-			for (int channelIdx = 0; channelIdx < RGBA_COLOR_CHANNELS_COUNT - 1; channelIdx++)
-			{
-				file << static_cast<int>(pixelData[channelIdx]) << ' ';
-			}
-		}
-		file << '\n';
-	}
-
-	file.close();
-	readbackBuffer->Unmap(0, nullptr);
-}
-
-void DXRTRenderer::rotateTriangleVertices()
-{
-	float angle = static_cast<float>(frameIdx) * 0.01f;
-	float cosA = cosf(angle);
-	float sinA = sinf(angle);
-
-	Vertex triangleVertices[] = {
-		{  0.0f * cosA - 0.5f * sinA,  0.0f * sinA + 0.5f * cosA },
-		{  0.5f * cosA - -0.5f * sinA,  0.5f * sinA + -0.5f * cosA },
-		{ -0.5f * cosA - -0.5f * sinA, -0.5f * sinA + -0.5f * cosA }
-	};
-
-	void* pVertexData;
-	vertexBuffer->Map(0, nullptr, &pVertexData);
-	memcpy(pVertexData, triangleVertices, sizeof(triangleVertices));
-	vertexBuffer->Unmap(0, nullptr);
 }
 
 void DXRTRenderer::frameBegin()
@@ -770,7 +466,6 @@ void DXRTRenderer::frameEnd()
 
 	waitForGPURenderFrame();
 
-	frameIdx++;
 	swapChainFrameIdx = swapChain->GetCurrentBackBufferIndex();
 }
 
@@ -1470,7 +1165,7 @@ void DXRTRenderer::prepareDispatchRaysDesc(
 
 void DXRTRenderer::stopRendering()
 {
-	//waitForGPURenderFrame(); Bug arises
+	//waitForGPURenderFrame(); //Bug arises
 }
 
 CRTScene& DXRTRenderer::getScene()
@@ -1502,37 +1197,5 @@ void DXRTRenderer::renderFrame()
 	dxrCmdList->DispatchRays(&raysDesc);
 
 	frameEnd();
-}
-
-
-void DXRTRenderer::renderFrameWithSwapChain()
-{
-	frameBegin();
-	
-	D3D12_RESOURCE_BARRIER barrier{};
-	barrier.Transition.pResource = renderTargets[swapChainFrameIdx];
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	commandList->ResourceBarrier(1, &barrier);
-
-	commandList->OMSetRenderTargets(1, &rtvHandles[swapChainFrameIdx], FALSE, nullptr);
-	commandList->ClearRenderTargetView(rtvHandles[swapChainFrameIdx], rendColor, 0, nullptr);
-
-	barrier.Transition.pResource = renderTargets[swapChainFrameIdx];
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	commandList->ResourceBarrier(1, &barrier);
-
-	commandList->Close();
-
-	ID3D12CommandList* ppCommandLists[] = { commandList };
-	commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
-
-	commandQueue->Signal(renderFramefence, renderFramefenceValue);
-
-	swapChain->Present(0, 0);
-
-	waitForGPURenderFrame();
-	frameEnd();	
 }
 

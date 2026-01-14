@@ -70,14 +70,34 @@ void miss(inout RayPayload payload)
     payload.pixelColor = float4(0.0, 1.0, 1.0, 1.0);
 }
 
+//[shader("closesthit")]
+//void closestHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
+//{
+//    uint tri = PrimitiveIndex();
+
+//    float r = frac(sin(tri * 12.9898) * 43758.5453);
+//    float g = frac(sin(tri * 78.233) * 43758.5453);
+//    float b = frac(sin(tri * 45.164) * 43758.5453);
+
+//    payload.pixelColor = float4(r, g, b, 1.0);
+//}
+
 [shader("closesthit")]
 void closestHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
     uint tri = PrimitiveIndex();
 
-    float r = frac(sin(tri * 12.9898) * 43758.5453);
-    float g = frac(sin(tri * 78.233) * 43758.5453);
-    float b = frac(sin(tri * 45.164) * 43758.5453);
+    // Stable per-triangle random
+    float triRand = frac(sin(tri * 12.9898) * 43758.5453);
 
-    payload.pixelColor = float4(r, g, b, 1.0);
+    float3 worldPos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+
+    // Smooth spatial factor
+    float spatial = sin(worldPos.x * 0.15) * 0.5 + 0.5;
+
+    // Blend both
+    float red = lerp(0.4 + 0.6 * triRand, 0.3 + 0.7 * spatial, 0.5);
+
+    payload.pixelColor = float4(red, 0.0, 0.0, 1.0);
 }
+
