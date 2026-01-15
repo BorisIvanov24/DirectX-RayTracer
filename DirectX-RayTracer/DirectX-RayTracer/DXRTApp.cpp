@@ -1,4 +1,5 @@
 #include "DXRTApp.h"
+#include <iostream>
 
 bool DXRTApp::init()
 {
@@ -49,6 +50,21 @@ float DXRTApp::getDeltaTime() const
 	return deltaTime;
 }
 
+void DXRTApp::setShadingMode(uint32_t value)
+{
+	renderer.changeShadingMode(value);
+}
+
+float DXRTApp::getCameraMoveSpeed() const
+{
+	return cameraMoveSpeed;
+}
+
+float DXRTApp::getCameraMouseSensitivity() const
+{
+	return cameraMouseSensitivity;
+}
+
 bool DXRTApp::initWindow()
 {
 	mainWnd = new DXRTMainWindow(this);
@@ -76,19 +92,18 @@ void DXRTApp::updateRenderStats()
 void DXRTApp::updateCameraMovement(const QSet<int>& keys, float dt)
 {
 	auto& cam = renderer.getScene().getCamera();
-	float speed = 10.0f;
 
 	if (keys.contains(Qt::Key_W))
-		cam.moveForward(-speed * dt);
+		cam.moveForward(-cameraMoveSpeed * dt);
 
 	if (keys.contains(Qt::Key_S))
-		cam.moveForward(speed * dt);
+		cam.moveForward(cameraMoveSpeed * dt);
 
 	if (keys.contains(Qt::Key_A))
-		cam.moveRight(-speed * dt);
+		cam.moveRight(-cameraMoveSpeed * dt);
 
 	if (keys.contains(Qt::Key_D))
-		cam.moveRight(speed * dt);
+		cam.moveRight(cameraMoveSpeed * dt);
 }
 
 void DXRTApp::onIdleTick()
@@ -96,7 +111,7 @@ void DXRTApp::onIdleTick()
 	// Compute deltaTime in seconds
 	deltaTime = frameTimer.elapsed() / 1000.f; // milliseconds -> seconds
 	frameTimer.restart();
-
+	
 	const QSet<int>& keys = mainWnd->getViewport()->getPressedKeys();
 
 	updateCameraMovement(keys, deltaTime);

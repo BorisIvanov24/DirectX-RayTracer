@@ -55,10 +55,8 @@ void DXRTViewportWidget::mouseMoveEvent(QMouseEvent* event)
 	QPoint center(width() / 2, height() / 2);
 	QPoint delta = event->pos() - center;
 
-	const float sensitivity = 0.1f;
-
-	float yawDegrees = delta.x() * sensitivity;
-	float pitchDegrees = -delta.y() * sensitivity;
+	float yawDegrees = delta.x() * app->getCameraMouseSensitivity();
+	float pitchDegrees = -delta.y() * app->getCameraMouseSensitivity();
 
 	if (delta.x() != 0 || delta.y() != 0)
 	{
@@ -75,9 +73,8 @@ void DXRTViewportWidget::mouseMoveEvent(QMouseEvent* event)
 
 void DXRTViewportWidget::wheelEvent(QWheelEvent* event)
 {
-	const float zoomSpeed = 0.8f; // adjust as needed
 	float delta = event->angleDelta().y() / 120.0f; // one notch = 120
-	app->zoomCamera(-delta * zoomSpeed);
+	app->zoomCamera(-delta * app->getMouseScrollSpeed());
 }
 
 void DXRTViewportWidget::updateImage(const QImage& image)

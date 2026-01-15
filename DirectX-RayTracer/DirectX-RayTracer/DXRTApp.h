@@ -27,6 +27,16 @@ public:
 	void zoomCamera(float amount);
 
 	float getDeltaTime() const;
+
+	void setCameraMoveSpeed(float speed) { cameraMoveSpeed = speed; }
+	void setCameraMouseSensitivity(float sens) { cameraMouseSensitivity = sens; }
+	void setMouseScrollSpeed(float speed) { mouseScrollSpeed = speed; }
+
+	void setShadingMode(uint32_t value);
+
+	float getMouseScrollSpeed() { return mouseScrollSpeed; }
+	float getCameraMoveSpeed() const;
+	float getCameraMouseSensitivity() const;
 private:
 	// Create the main window for the editor
 	bool initWindow();
@@ -46,5 +56,11 @@ private:
 
 	QElapsedTimer frameTimer; // tracks time between frames
 	float deltaTime = 0.f;
+
+	// Camera control
+	float cameraMoveSpeed = 10.f;      // units per second
+	float cameraMouseSensitivity = 0.1f; // degrees per pixel
+	float mouseScrollSpeed = 0.10f;
+
 };
 

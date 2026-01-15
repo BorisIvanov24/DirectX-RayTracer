@@ -58,6 +58,19 @@ struct CameraCB
 	DirectX::XMFLOAT4X4 cameraRotation;
 };
 
+struct BLAS
+{
+	ID3D12ResourcePtr buffer;
+	ID3D12ResourcePtr scratch;
+	D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = 0;
+};
+
+struct DebugCB
+{
+	uint32_t shadingMode;
+	float pad[3];
+};
+
 class DXRTRenderer
 {
 public:
@@ -75,6 +88,8 @@ public:
 	void prepareForRayTracing();
 
 	void stopRendering();
+
+	void changeShadingMode(uint32_t value);
 
 	CRTScene& getScene();
 private:
@@ -98,9 +113,13 @@ private:
 
 	// Create the vertices that will be rendered by the pipeline for the frame
 	// Use an upload heap to store the vertices on the CPU memory, the GPU will access them using the PCIe
-	void createVertexBuffer();
+	void createVertexBuffers();
 
-	void createIndexBuffer();
+	void createIndexBuffers();
+
+	void createDebugCB();
+
+	void updateDebugCB();
 
 	void createScene();
 
@@ -112,7 +131,7 @@ private:
 
 	void createCameraBuffer();
 
-	void createAccelerationStructure();
+	void createAccelerationStructures();
 
 	void createGlobalRootSignature();
 
@@ -214,6 +233,7 @@ private:
 	ID3D12ResourcePtr tlasBuffer;      // GPU buffer storing TLAS
 	ID3D12ResourcePtr tlasScratch;     // Scratch buffer for building TLAS
 	ID3D12ResourcePtr instanceBuffer;  // Instance description buffer
+	std::vector<BLAS> blasList;
 
 	// GPU pointers
 	D3D12_GPU_VIRTUAL_ADDRESS blasBufferAddress;
@@ -222,10 +242,17 @@ private:
 	std::unique_ptr<CRTScene> scene;
 	ID3D12ResourcePtr cameraCB;
 
+	ID3D12ResourcePtr debugCB;
+	uint32_t currentShadingMode = 0;
+	bool isChangedShadingMode = true;
+
+	// Geometry buffers (one per mesh)
 	std::vector<ID3D12ResourcePtr> vertexBuffers;
 	std::vector<ID3D12ResourcePtr> indexBuffers;
-
 	std::vector<ID3D12ResourcePtr> uploadVertexBuffers;
 	std::vector<ID3D12ResourcePtr> uploadIndexBuffers;
+
+
+	ID3D12DescriptorHeapPtr clearHeap; // CPU-only heap for ClearUAV
 };
 

@@ -52,10 +52,11 @@ void DXRTRenderer::prepareForRendering(HWND hwnd)
 
 	createScene();
 	createCameraBuffer();
+	createDebugCB();
 
-	createVertexBuffer();
-	createIndexBuffer();
-	createAccelerationStructure();
+	createVertexBuffers();
+	createIndexBuffers();
+	createAccelerationStructures();
 
 	prepareForRayTracing();
 }
@@ -239,143 +240,9 @@ void DXRTRenderer::waitForGPURenderFrame()
 	renderFramefenceValue++;
 }
 
-void DXRTRenderer::createVertexBuffer()
-{
-	const CRTMesh& mesh = scene->getObjects()[1];
-	const std::vector<CRTVector>& vertices = mesh.getVertices();
-	
-	UINT verticesCount = vertices.size();
-
-	D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	D3D12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(verticesCount * sizeof(CRTVector));
-
-	HRESULT hr = d3d12Device->CreateCommittedResource(
-		&heapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&bufferDesc,
-		D3D12_RESOURCE_STATE_COMMON, // Start as copy destination
-		nullptr,
-		IID_PPV_ARGS(&uploadVertexBuffer)
-	);
-	assert(SUCCEEDED(hr));
-
-	void* vertexData = nullptr;
-	hr = uploadVertexBuffer->Map(0, nullptr, &vertexData);
-	assert(SUCCEEDED(hr));
-
-	memcpy(vertexData, vertices.data(), verticesCount * sizeof(CRTVector));
-
-	uploadVertexBuffer->Unmap(0, nullptr);
-
-	heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-	hr = d3d12Device->CreateCommittedResource(
-		&heapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&bufferDesc,
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&vertexBuffer)
-	);
-
-	assert(SUCCEEDED(hr));
-
-	assert(SUCCEEDED(commandAllocator->Reset()));
-	assert(SUCCEEDED(commandList->Reset(commandAllocator, nullptr)));
-
-	// Schedule copy from upload heap -> default heap
-	commandList->CopyBufferRegion(vertexBuffer, 0, uploadVertexBuffer, 0, verticesCount * sizeof(CRTVector));
-
-	// Transition default heap to VERTEX_AND_CONSTANT_BUFFER state
-	D3D12_RESOURCE_BARRIER barrier = {};
-	barrier.Transition.pResource = vertexBuffer;
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-	
-	commandList->ResourceBarrier(1, &barrier);
-
-	hr = commandList->Close();
-	assert(SUCCEEDED(hr));
-
-	ID3D12CommandList* ppCommandLists[] = { commandList };
-	commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
-
-	// Signal fence
-	hr = commandQueue->Signal(renderFramefence, renderFramefenceValue);
-	assert(SUCCEEDED(hr));
-
-	waitForGPURenderFrame();
-}
-
-void DXRTRenderer::createIndexBuffer()
-{	
-	const CRTMesh& mesh = scene->getObjects()[1];
-	const std::vector<int>& indices = mesh.getIndices();
-
-	const UINT indexBufferSize = indices.size() * sizeof(int);
-
-	ID3D12Resource* uploadIndexBuffer = nullptr;
-
-	D3D12_HEAP_PROPERTIES uploadHeapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	D3D12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize);
-
-	d3d12Device->CreateCommittedResource(
-		&uploadHeapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&bufferDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&uploadIndexBuffer)
-	);
-
-	void* data;
-	uploadIndexBuffer->Map(0, nullptr, &data);
-	memcpy(data, indices.data(), indexBufferSize);
-	uploadIndexBuffer->Unmap(0, nullptr);
-
-	D3D12_HEAP_PROPERTIES defaultHeapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-
-	d3d12Device->CreateCommittedResource(
-		&defaultHeapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&bufferDesc,
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&indexBuffer)
-	);
-
-	commandAllocator->Reset();
-	commandList->Reset(commandAllocator, nullptr);
-
-	commandList->CopyBufferRegion(
-		indexBuffer,
-		0,
-		uploadIndexBuffer,
-		0,
-		indexBufferSize
-	);
-
-	D3D12_RESOURCE_BARRIER barrier = {};
-	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Transition.pResource = indexBuffer;
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_INDEX_BUFFER;
-
-	commandList->ResourceBarrier(1, &barrier);
-
-	commandList->Close();
-
-	ID3D12CommandList* lists[] = { commandList };
-	commandQueue->ExecuteCommandLists(1, lists);
-
-	commandQueue->Signal(renderFramefence, renderFramefenceValue);
-	waitForGPURenderFrame();
-
-	uploadIndexBuffer->Release();
-}
-
 void DXRTRenderer::createScene()
 {
-	scene = std::make_unique<CRTScene>("scene5_Lec9.crtscene");
+	scene = std::make_unique<CRTScene>("Scenes/Dragon.crtscene");
 }
 
 void DXRTRenderer::updateCameraCB()
@@ -402,8 +269,199 @@ void DXRTRenderer::updateCameraCB()
 	cameraCB->Unmap(0, nullptr);
 }
 
+void DXRTRenderer::createDebugCB()
+{
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	auto desc = CD3DX12_RESOURCE_DESC::Buffer(
+		(sizeof(DebugCB) + 255) & ~255
+	);
+
+	HRESULT hr = d3d12Device->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&desc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&debugCB)
+	);
+
+	assert(SUCCEEDED(hr));
+}
+
+void DXRTRenderer::updateDebugCB()
+{
+	DebugCB cbData = {};
+	cbData.shadingMode = currentShadingMode;
+
+	void* mapped = nullptr;
+	debugCB->Map(0, nullptr, &mapped);
+	memcpy(mapped, &cbData, sizeof(DebugCB));
+	debugCB->Unmap(0, nullptr);
+}
+
+void DXRTRenderer::createIndexBuffers()
+{
+	const auto& objects = scene->getObjects();
+
+	indexBuffers.resize(objects.size());
+	uploadIndexBuffers.resize(objects.size());
+
+	auto uploadHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	auto defaultHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+
+	for (size_t i = 0; i < objects.size(); ++i)
+	{
+		const auto& indices = objects[i].getIndices();
+		UINT size = UINT(indices.size() * sizeof(uint32_t));
+
+		std::cout << "objectNumber: " << i << " number of Indices: " << indices.size() << std::endl;
+		auto desc = CD3DX12_RESOURCE_DESC::Buffer(size);
+
+		// ---------------------------------------------------------
+		// Upload buffer
+		// ---------------------------------------------------------
+		d3d12Device->CreateCommittedResource(
+			&uploadHeap,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&uploadIndexBuffers[i])
+		);
+
+		void* data = nullptr;
+		uploadIndexBuffers[i]->Map(0, nullptr, &data);
+		memcpy(data, indices.data(), size);
+		uploadIndexBuffers[i]->Unmap(0, nullptr);
+
+		// ---------------------------------------------------------
+		// GPU buffer
+		// ---------------------------------------------------------
+		d3d12Device->CreateCommittedResource(
+			&defaultHeap,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(&indexBuffers[i])
+		);
+
+		// ---------------------------------------------------------
+		// Copy + transition
+		// ---------------------------------------------------------
+		commandAllocator->Reset();
+		commandList->Reset(commandAllocator, nullptr);
+
+		commandList->CopyBufferRegion(
+			indexBuffers[i], 0,
+			uploadIndexBuffers[i], 0,
+			size
+		);
+
+		D3D12_RESOURCE_BARRIER barrier =
+			CD3DX12_RESOURCE_BARRIER::Transition(
+				indexBuffers[i],
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE 
+			);
+
+		commandList->ResourceBarrier(1, &barrier);
+		commandList->Close();
+
+		ID3D12CommandList* lists[] = { commandList };
+		commandQueue->ExecuteCommandLists(1, lists);
+		commandQueue->Signal(renderFramefence, renderFramefenceValue);
+		waitForGPURenderFrame();
+	}
+}
+
+
+void DXRTRenderer::createVertexBuffers()
+{
+	const auto& objects = scene->getObjects();
+
+	vertexBuffers.resize(objects.size());
+	uploadVertexBuffers.resize(objects.size());
+
+	auto uploadHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	auto defaultHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+
+	for (size_t i = 0; i < objects.size(); ++i)
+	{
+		const auto& vertices = objects[i].getVertices();
+		UINT size = UINT(vertices.size() * sizeof(CRTVector));
+
+		std::cout << "objectNumber: " << i << " number of Vertices: " << vertices.size() << std::endl;
+		auto desc = CD3DX12_RESOURCE_DESC::Buffer(size);
+
+		// ---------------------------------------------------------
+		// Upload buffer
+		// ---------------------------------------------------------
+		d3d12Device->CreateCommittedResource(
+			&uploadHeap,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&uploadVertexBuffers[i])
+		);
+
+		void* data = nullptr;
+		uploadVertexBuffers[i]->Map(0, nullptr, &data);
+		memcpy(data, vertices.data(), size);
+		uploadVertexBuffers[i]->Unmap(0, nullptr);
+
+		// ---------------------------------------------------------
+		// GPU buffer
+		// ---------------------------------------------------------
+		d3d12Device->CreateCommittedResource(
+			&defaultHeap,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(&vertexBuffers[i])
+		);
+
+		// ---------------------------------------------------------
+		// Copy + transition
+		// ---------------------------------------------------------
+		commandAllocator->Reset();
+		commandList->Reset(commandAllocator, nullptr);
+
+		commandList->CopyBufferRegion(
+			vertexBuffers[i], 0,
+			uploadVertexBuffers[i], 0,
+			size
+		);
+
+		D3D12_RESOURCE_BARRIER barrier =
+			CD3DX12_RESOURCE_BARRIER::Transition(
+				vertexBuffers[i],
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+			);
+
+		commandList->ResourceBarrier(1, &barrier);
+		commandList->Close();
+
+		ID3D12CommandList* lists[] = { commandList };
+		commandQueue->ExecuteCommandLists(1, lists);
+		commandQueue->Signal(renderFramefence, renderFramefenceValue);
+		waitForGPURenderFrame();
+	}
+}
+
+
+
 void DXRTRenderer::frameBegin()
 {
+	if (isChangedShadingMode)
+	{
+		updateDebugCB();
+		isChangedShadingMode = false;
+	}
+
 	updateCameraCB();
 
 	assert(SUCCEEDED(commandAllocator->Reset()));
@@ -487,210 +545,322 @@ void DXRTRenderer::createCameraBuffer()
 	assert(SUCCEEDED(hr));
 }
 
-void DXRTRenderer::createAccelerationStructure()
+void DXRTRenderer::createAccelerationStructures()
 {
-	D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC trianglesDesc;
-	trianglesDesc.VertexBuffer.StartAddress = vertexBuffer->GetGPUVirtualAddress();
-	trianglesDesc.VertexBuffer.StrideInBytes = sizeof(CRTVector);
-	trianglesDesc.VertexCount = scene->getObjects()[1].getVertices().size();
-	trianglesDesc.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+	const auto& objects = scene->getObjects();
+	blasList.resize(objects.size());
 
-	trianglesDesc.IndexBuffer = indexBuffer->GetGPUVirtualAddress();
-	trianglesDesc.IndexCount = scene->getObjects()[1].getIndices().size();
-	trianglesDesc.IndexFormat = DXGI_FORMAT_R32_UINT;
+	// Default heap for AS + scratch buffers
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	// ---------------------------------------------------------------------
+	// Reset command list (MANDATORY)
+	// ---------------------------------------------------------------------
+	commandAllocator->Reset();
+	dxrCmdList->Reset(commandAllocator, nullptr);
 
-	trianglesDesc.Transform3x4 = 0;
+	// =====================================================================
+	// Build BLASes
+	// =====================================================================
+	for (size_t i = 0; i < objects.size(); ++i)
+	{
+		// -------------------------------------------------------------
+		// Transition vertex & index buffers for DXR
+		// -------------------------------------------------------------
+		D3D12_RESOURCE_BARRIER barriers[2];
 
+		barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(
+			vertexBuffers[i],
+			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+		);
 
-	D3D12_RAYTRACING_GEOMETRY_DESC geomDesc = {};
-	geomDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-	geomDesc.Triangles = trianglesDesc;
-	geomDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+		barriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(
+			indexBuffers[i],
+			D3D12_RESOURCE_STATE_INDEX_BUFFER,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+		);
 
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS blasInputs = {};
-	blasInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-	blasInputs.NumDescs = 1;
-	blasInputs.pGeometryDescs = &geomDesc;
-	blasInputs.Flags =
-		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+		dxrCmdList->ResourceBarrier(2, barriers);
 
-	// Query prebuild info
-	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO blasPrebuildInfo = {};
-	dxrDevice->GetRaytracingAccelerationStructurePrebuildInfo(&blasInputs, &blasPrebuildInfo);
+		// -------------------------------------------------------------
+		// Geometry description
+		// -------------------------------------------------------------
+		D3D12_RAYTRACING_GEOMETRY_DESC geom{};
+		geom.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+		geom.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
-	// Create BLAS buffer
-	D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+		geom.Triangles.VertexBuffer.StartAddress =
+			vertexBuffers[i]->GetGPUVirtualAddress();
+		geom.Triangles.VertexBuffer.StrideInBytes = sizeof(CRTVector);
+		geom.Triangles.VertexCount =
+			static_cast<UINT>(objects[i].getVertices().size());
+		geom.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
 
-	D3D12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(blasPrebuildInfo.ResultDataMaxSizeInBytes,
-		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+		geom.Triangles.IndexBuffer =
+			indexBuffers[i]->GetGPUVirtualAddress();
+		geom.Triangles.IndexCount =
+			static_cast<UINT>(objects[i].getIndices().size());
+		geom.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
 
-	HRESULT hr = dxrDevice->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc,
-		D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
-		nullptr, IID_PPV_ARGS(&blasBuffer));
-	assert(SUCCEEDED(hr));
+		// -------------------------------------------------------------
+		// BLAS inputs
+		// -------------------------------------------------------------
+		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs{};
+		inputs.Type =
+			D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+		inputs.DescsLayout =
+			D3D12_ELEMENTS_LAYOUT_ARRAY;
+		inputs.NumDescs = 1;
+		inputs.pGeometryDescs = &geom;
+		inputs.Flags =
+			D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 
-	// Scratch buffer for BLAS
-	bufferDesc.Width = blasPrebuildInfo.ScratchDataSizeInBytes;
-	hr = dxrDevice->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-		IID_PPV_ARGS(&blasScratch));
-	assert(SUCCEEDED(hr));
+		// -------------------------------------------------------------
+		// Query sizes
+		// -------------------------------------------------------------
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info{};
+		dxrDevice->GetRaytracingAccelerationStructurePrebuildInfo(
+			&inputs, &info
+		);
 
-	// Build BLAS
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC blasBuildDesc = {};
-	blasBuildDesc.Inputs = blasInputs;
-	blasBuildDesc.DestAccelerationStructureData = blasBuffer->GetGPUVirtualAddress();
-	blasBuildDesc.ScratchAccelerationStructureData = blasScratch->GetGPUVirtualAddress();
+		// -------------------------------------------------------------
+		// Allocate BLAS buffer
+		// -------------------------------------------------------------
+		auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 
-	assert(SUCCEEDED(commandAllocator->Reset()));
-	assert(SUCCEEDED(dxrCmdList->Reset(commandAllocator, nullptr)));
+		auto blasDesc = CD3DX12_RESOURCE_DESC::Buffer(
+			info.ResultDataMaxSizeInBytes,
+			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+		);
 
-	dxrCmdList->BuildRaytracingAccelerationStructure(&blasBuildDesc, 0, nullptr);
+		dxrDevice->CreateCommittedResource(
+			&heapProps,
+			D3D12_HEAP_FLAG_NONE,
+			&blasDesc,
+			D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+			nullptr,
+			IID_PPV_ARGS(&blasList[i].buffer)
+		);
 
-	// UAV barrier for BLAS
-	D3D12_RESOURCE_BARRIER uavBarrier = {};
-	uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-	uavBarrier.UAV.pResource = blasBuffer;
-	dxrCmdList->ResourceBarrier(1, &uavBarrier);
+		// -------------------------------------------------------------
+		// Allocate scratch buffer
+		// -------------------------------------------------------------
+		auto scratchDesc = CD3DX12_RESOURCE_DESC::Buffer(
+			info.ScratchDataSizeInBytes,
+			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+		);
 
-	blasBufferAddress = blasBuffer->GetGPUVirtualAddress();
+		dxrDevice->CreateCommittedResource(
+			&heapProps,
+			D3D12_HEAP_FLAG_NONE,
+			&scratchDesc,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+			nullptr,
+			IID_PPV_ARGS(&blasList[i].scratch)
+		);
 
-	// ----- 3. TLAS instance -----
-	D3D12_RAYTRACING_INSTANCE_DESC instanceDesc = {};
-	instanceDesc.AccelerationStructure = blasBufferAddress;
-	instanceDesc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
-	instanceDesc.InstanceID = 0;
-	instanceDesc.InstanceMask = 0xFF;
-	instanceDesc.InstanceContributionToHitGroupIndex = 0;
+		// -------------------------------------------------------------
+		// Build BLAS
+		// -------------------------------------------------------------
+		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build{};
+		build.Inputs = inputs;
+		build.DestAccelerationStructureData =
+			blasList[i].buffer->GetGPUVirtualAddress();
+		build.ScratchAccelerationStructureData =
+			blasList[i].scratch->GetGPUVirtualAddress();
 
-	// Identity transform
-	instanceDesc.Transform[0][0] = 1.f; instanceDesc.Transform[0][1] = 0.f; instanceDesc.Transform[0][2] = 0.f;
-	instanceDesc.Transform[1][0] = 0.f; instanceDesc.Transform[1][1] = 1.f; instanceDesc.Transform[1][2] = 0.f;
-	instanceDesc.Transform[2][0] = 0.f; instanceDesc.Transform[2][1] = 0.f; instanceDesc.Transform[2][2] = 1.f;
-	
-	// Upload instance description
-	D3D12_HEAP_PROPERTIES uploadProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	D3D12_RESOURCE_DESC instanceBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+		dxrCmdList->BuildRaytracingAccelerationStructure(&build, 0, nullptr);
 
-	hr = dxrDevice->CreateCommittedResource(&uploadProps, D3D12_HEAP_FLAG_NONE, &instanceBufferDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-		IID_PPV_ARGS(&instanceBuffer));
-	assert(SUCCEEDED(hr));
+		// UAV barrier REQUIRED after AS build
+		D3D12_RESOURCE_BARRIER uavBarrier =
+			CD3DX12_RESOURCE_BARRIER::UAV(nullptr);
+		dxrCmdList->ResourceBarrier(1, &uavBarrier);
 
-	void* mapped;
+		blasList[i].gpuAddress =
+			blasList[i].buffer->GetGPUVirtualAddress();
+	}
+
+	// =====================================================================
+	// Build TLAS
+	// =====================================================================
+
+	// -------------------------------------------------------------
+	// Instance buffer (CPU-> GPU)
+	// -------------------------------------------------------------
+	std::vector<D3D12_RAYTRACING_INSTANCE_DESC> instances(blasList.size());
+
+	for (UINT i = 0; i < instances.size(); ++i)
+	{
+		instances[i].AccelerationStructure =
+			blasList[i].gpuAddress;
+		instances[i].InstanceID = i;
+		instances[i].InstanceMask = 0xFF;
+		instances[i].InstanceContributionToHitGroupIndex = 0;
+		instances[i].Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+
+		instances[i].Transform[0][0] = 1.0f;
+		instances[i].Transform[1][1] = 1.0f;
+		instances[i].Transform[2][2] = 1.0f;
+	}
+
+	auto uploadHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	auto instDesc = CD3DX12_RESOURCE_DESC::Buffer(
+		sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * instances.size()
+	);
+
+	dxrDevice->CreateCommittedResource(
+		&uploadHeap,
+		D3D12_HEAP_FLAG_NONE,
+		&instDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&instanceBuffer)
+	);
+
+	void* mapped = nullptr;
 	instanceBuffer->Map(0, nullptr, &mapped);
-	memcpy(mapped, &instanceDesc, sizeof(instanceDesc));
+	memcpy(mapped, instances.data(), instDesc.Width);
 	instanceBuffer->Unmap(0, nullptr);
 
-	// TLAS build inputs
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS tlasInputs = {};
-	tlasInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-	tlasInputs.NumDescs = 1;
-	tlasInputs.InstanceDescs = instanceBuffer->GetGPUVirtualAddress();
+	// -------------------------------------------------------------
+	// TLAS inputs
+	// -------------------------------------------------------------
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS tlasInputs{};
+	tlasInputs.Type =
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+	tlasInputs.DescsLayout =
+		D3D12_ELEMENTS_LAYOUT_ARRAY;
+	tlasInputs.NumDescs = (UINT)instances.size();
+	tlasInputs.InstanceDescs =
+		instanceBuffer->GetGPUVirtualAddress();
 	tlasInputs.Flags =
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 
-	// Prebuild TLAS
-	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO tlasPrebuildInfo = {};
-	dxrDevice->GetRaytracingAccelerationStructurePrebuildInfo(&tlasInputs, &tlasPrebuildInfo);
+	// -------------------------------------------------------------
+	// Query TLAS sizes
+	// -------------------------------------------------------------
+	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO tlasInfo{};
+	dxrDevice->GetRaytracingAccelerationStructurePrebuildInfo(
+		&tlasInputs, &tlasInfo
+	);
 
-	// Create TLAS buffer
-	bufferDesc.Width = tlasPrebuildInfo.ResultDataMaxSizeInBytes;
-	hr = dxrDevice->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc,
-		D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, nullptr,
-		IID_PPV_ARGS(&tlasBuffer));
-	assert(SUCCEEDED(hr));
+	// -------------------------------------------------------------
+	// Allocate TLAS buffer
+	// -------------------------------------------------------------
+	auto tlasDesc = CD3DX12_RESOURCE_DESC::Buffer(
+		tlasInfo.ResultDataMaxSizeInBytes,
+		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+	);
 
-	// Scratch buffer for TLAS
-	bufferDesc.Width = tlasPrebuildInfo.ScratchDataSizeInBytes;
-	hr = dxrDevice->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-		IID_PPV_ARGS(&tlasScratch));
-	assert(SUCCEEDED(hr));
+	dxrDevice->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&tlasDesc,
+		D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+		nullptr,
+		IID_PPV_ARGS(&tlasBuffer)
+	);
 
+	// -------------------------------------------------------------
+	// Allocate TLAS scratch
+	// -------------------------------------------------------------
+	auto tlasScratchDesc = CD3DX12_RESOURCE_DESC::Buffer(
+		tlasInfo.ScratchDataSizeInBytes,
+		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+	);
+
+	dxrDevice->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&tlasScratchDesc,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		nullptr,
+		IID_PPV_ARGS(&tlasScratch)
+	);
+
+	// -------------------------------------------------------------
 	// Build TLAS
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC tlasBuildDesc = {};
-	tlasBuildDesc.Inputs = tlasInputs;
-	tlasBuildDesc.DestAccelerationStructureData = tlasBuffer->GetGPUVirtualAddress();
-	tlasBuildDesc.ScratchAccelerationStructureData = tlasScratch->GetGPUVirtualAddress();
+	// -------------------------------------------------------------
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC tlasBuild{};
+	tlasBuild.Inputs = tlasInputs;
+	tlasBuild.DestAccelerationStructureData =
+		tlasBuffer->GetGPUVirtualAddress();
+	tlasBuild.ScratchAccelerationStructureData =
+		tlasScratch->GetGPUVirtualAddress();
 
-	dxrCmdList->BuildRaytracingAccelerationStructure(&tlasBuildDesc, 0, nullptr);
+	dxrCmdList->BuildRaytracingAccelerationStructure(&tlasBuild, 0, nullptr);
 
-	// UAV barrier for TLAS
-	uavBarrier.UAV.pResource = tlasBuffer;
-	dxrCmdList->ResourceBarrier(1, &uavBarrier);
+	// Required UAV barrier
+	D3D12_RESOURCE_BARRIER tlasUav =
+		CD3DX12_RESOURCE_BARRIER::UAV(nullptr);
+	dxrCmdList->ResourceBarrier(1, &tlasUav);
 
-	// Close & execute
-	assert(SUCCEEDED(dxrCmdList->Close()));
+	// ---------------------------------------------------------------------
+	// Execute
+	// ---------------------------------------------------------------------
+	dxrCmdList->Close();
 	ID3D12CommandList* lists[] = { dxrCmdList };
 	commandQueue->ExecuteCommandLists(1, lists);
-
-	// Wait for GPU
-	assert(SUCCEEDED(commandQueue->Signal(renderFramefence, renderFramefenceValue)));
+	commandQueue->Signal(renderFramefence, renderFramefenceValue);
 	waitForGPURenderFrame();
 }
-
 
 
 void DXRTRenderer::createGlobalRootSignature()
 {
 	D3D12_DESCRIPTOR_RANGE ranges[2] = {};
 
-	// t0 : RaytracingAccelerationStructure
 	ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	ranges[0].NumDescriptors = 1;
 	ranges[0].BaseShaderRegister = 0;
 	ranges[0].RegisterSpace = 0;
 	ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-	// u0 : RWTexture2D
 	ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 	ranges[1].NumDescriptors = 1;
 	ranges[1].BaseShaderRegister = 0;
 	ranges[1].RegisterSpace = 0;
 	ranges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-	D3D12_ROOT_PARAMETER rootParams[2] = {};
+	D3D12_ROOT_PARAMETER rootParams[3] = {};
 
-	// Root parameter 0: descriptor table (SRV + UAV)
 	rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	rootParams[0].DescriptorTable.NumDescriptorRanges = 2;
 	rootParams[0].DescriptorTable.pDescriptorRanges = ranges;
 
-	// Root parameter 1: CBV b0 (Camera)
 	rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	rootParams[1].Descriptor.ShaderRegister = 0;
 	rootParams[1].Descriptor.RegisterSpace = 0;
 
+	rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	rootParams[2].Descriptor.ShaderRegister = 1;
+	rootParams[2].Descriptor.RegisterSpace = 0;
+
 	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
-	rootSigDesc.NumParameters = 2;
+	rootSigDesc.NumParameters = 3;
 	rootSigDesc.pParameters = rootParams;
-	rootSigDesc.NumStaticSamplers = 0;
-	rootSigDesc.pStaticSamplers = nullptr;
 	rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
 	ID3DBlobPtr sigBlob;
 	ID3DBlobPtr errorBlob;
 
-	HRESULT hr = D3D12SerializeRootSignature(
+	D3D12SerializeRootSignature(
 		&rootSigDesc,
 		D3D_ROOT_SIGNATURE_VERSION_1,
 		&sigBlob,
 		&errorBlob
 	);
-	assert(SUCCEEDED(hr));
 
-	hr = d3d12Device->CreateRootSignature(
+	d3d12Device->CreateRootSignature(
 		0,
 		sigBlob->GetBufferPointer(),
 		sigBlob->GetBufferSize(),
 		IID_PPV_ARGS(&globalRootSignature)
 	);
-	assert(SUCCEEDED(hr));
 }
-
 
 void DXRTRenderer::createRayTracingPipelineState()
 {
@@ -812,6 +982,24 @@ void DXRTRenderer::createRayTracingShaderTexture()
 		nullptr,
 		&uavDesc,
 		handle
+	);
+
+	// CPU-only heap for ClearUAV
+	D3D12_DESCRIPTOR_HEAP_DESC cpuHeapDesc = {};
+	cpuHeapDesc.NumDescriptors = 1;
+	cpuHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	cpuHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE; // CPU only
+	d3d12Device->CreateDescriptorHeap(&cpuHeapDesc, IID_PPV_ARGS(&clearHeap));
+
+	// Create a UAV descriptor in this CPU-only heap
+	uavDesc = {};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+	uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	d3d12Device->CreateUnorderedAccessView(
+		raytracingOutput,
+		nullptr,
+		&uavDesc,
+		clearHeap->GetCPUDescriptorHandleForHeapStart()
 	);
 }
 
@@ -1168,6 +1356,12 @@ void DXRTRenderer::stopRendering()
 	//waitForGPURenderFrame(); //Bug arises
 }
 
+void DXRTRenderer::changeShadingMode(uint32_t value)
+{
+	currentShadingMode = value;
+	isChangedShadingMode = true;
+}
+
 CRTScene& DXRTRenderer::getScene()
 {
 	return *scene;
@@ -1182,12 +1376,26 @@ void DXRTRenderer::renderFrame()
 	dxrCmdList->SetComputeRootSignature(globalRootSignature);
 	dxrCmdList->SetComputeRootDescriptorTable(0, uavHeap->GetGPUDescriptorHandleForHeapStart());
 	dxrCmdList->SetComputeRootConstantBufferView(1, cameraCB->GetGPUVirtualAddress());
+	dxrCmdList->SetComputeRootConstantBufferView(
+		2,
+		debugCB->GetGPUVirtualAddress()
+	);
 	dxrCmdList->SetPipelineState1(rtStateObject);
 	FLOAT clearColor[4] = { 0.f, 0.f, 1.f, 1.f };
 
-	dxrCmdList->ClearUnorderedAccessViewFloat(
+	UINT inc = d3d12Device->GetDescriptorHandleIncrementSize(
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+	);
+
+	CD3DX12_GPU_DESCRIPTOR_HANDLE uavGpuHandle(
 		uavHeap->GetGPUDescriptorHandleForHeapStart(),
-		uavHeap->GetCPUDescriptorHandleForHeapStart(),
+		1, // UAV is descriptor #1
+		inc
+	);
+
+	dxrCmdList->ClearUnorderedAccessViewFloat(
+		uavGpuHandle,
+		clearHeap->GetCPUDescriptorHandleForHeapStart(),
 		raytracingOutput,
 		clearColor,
 		0,
